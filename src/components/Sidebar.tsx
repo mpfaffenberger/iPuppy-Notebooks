@@ -1,5 +1,5 @@
 import { Box, Card, CardContent, Typography, Button, IconButton } from '@mui/material';
-import { PlayArrow, Delete, Add, Stop } from '@mui/icons-material';
+import { PlayArrow, Delete, Add, Refresh } from '@mui/icons-material';
 
 interface SidebarProps {
   notebooks: string[];
@@ -9,8 +9,8 @@ interface SidebarProps {
   onOpenNotebook: (name: string) => void;
   onDeleteNotebook: (name: string) => void;
   kernelStatus: 'idle' | 'running' | 'error';
-  onStartKernel: () => void;
-  onStopKernel: () => void;
+  onResetKernel: () => void;
+  onEnsureKernel: () => void;
 }
 
 export const Sidebar = ({
@@ -21,8 +21,8 @@ export const Sidebar = ({
   onOpenNotebook,
   onDeleteNotebook,
   kernelStatus,
-  onStartKernel,
-  onStopKernel
+  onResetKernel,
+  onEnsureKernel
 }: SidebarProps) => {
   return (
     <Box sx={{ width: '400px', flexShrink: 0 }}>
@@ -79,10 +79,10 @@ export const Sidebar = ({
         </CardContent>
       </Card>
 
-      {/* Kernel status */}
+      {/* Global Kernel status */}
       <Card>
         <CardContent>
-          <Typography variant="h5" gutterBottom>🚀 Kernel Status</Typography>
+          <Typography variant="h5" gutterBottom>🚀 Global Kernel</Typography>
           <Box
             sx={{
               p: 2,
@@ -102,23 +102,21 @@ export const Sidebar = ({
           <Box display="flex" gap={1}>
             <Button
               variant="contained"
-              sx={{ backgroundColor: '#14b8a6', '&:hover': { backgroundColor: '#0d9488' }, '&:disabled': { backgroundColor: 'action.disabledBackground' } }}
+              sx={{ backgroundColor: '#14b8a6', '&:hover': { backgroundColor: '#0d9488' } }}
               startIcon={<PlayArrow />}
               fullWidth
-              disabled={kernelStatus === 'running'}
-              onClick={onStartKernel}
+              onClick={onEnsureKernel}
             >
-              🚀 Start
+              🚀 Ensure
             </Button>
             <Button
               variant="contained"
-              sx={{ backgroundColor: '#f97316', '&:hover': { backgroundColor: '#ea580c' }, '&:disabled': { backgroundColor: 'action.disabledBackground' } }}
-              startIcon={<Stop />}
+              sx={{ backgroundColor: '#f97316', '&:hover': { backgroundColor: '#ea580c' } }}
+              startIcon={<Refresh />}
               fullWidth
-              disabled={kernelStatus === 'idle'}
-              onClick={onStopKernel}
+              onClick={onResetKernel}
             >
-              Stop
+              🔄 Reset
             </Button>
           </Box>
         </CardContent>

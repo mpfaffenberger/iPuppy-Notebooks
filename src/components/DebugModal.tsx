@@ -3,32 +3,23 @@ import {
   Box, 
   Typography, 
   Button, 
-  Chip, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper 
+  Chip
 } from '@mui/material';
 
 interface DebugModalProps {
   open: boolean;
   onClose: () => void;
   websocketStatus: string;
-  kernelId: string | null;
-  allKernels: any[];
-  onRefreshKernels: () => void;
+  kernelStatus: 'idle' | 'running' | 'error';
+  onRefreshStatus: () => void;
 }
 
 export const DebugModal = ({
   open,
   onClose,
   websocketStatus,
-  kernelId,
-  allKernels,
-  onRefreshKernels
+  kernelStatus,
+  onRefreshStatus
 }: DebugModalProps) => {
   return (
     <Modal
@@ -55,75 +46,39 @@ export const DebugModal = ({
           🐛 Debug Information
         </Typography>
         
-        {/* WebSocket Status */}
+        {/* Socket.IO Status */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>WebSocket Status</Typography>
+          <Typography variant="h6" gutterBottom>Socket.IO Status</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip 
               label={websocketStatus}
               color={websocketStatus === 'Connected' ? 'success' : 'error'}
               variant="outlined"
             />
-            {kernelId && (
-              <Typography variant="body2">
-                Connected to kernel: {kernelId}
-              </Typography>
-            )}
+            <Typography variant="body2">
+              Connected to Global Kernel
+            </Typography>
           </Box>
         </Box>
 
-        {/* Kernels Table */}
-        <Box>
-          <Typography variant="h6" gutterBottom>Active Kernels</Typography>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Kernel ID</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Current</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {allKernels.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center">
-                      <Typography color="text.secondary">No kernels running</Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  allKernels.map((kernel) => (
-                    <TableRow key={kernel.id}>
-                      <TableCell>
-                        <Typography variant="body2" fontFamily="monospace">
-                          {kernel.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={kernel.running ? 'Running' : 'Stopped'} 
-                          color={kernel.running ? 'success' : 'error'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {kernel.id === kernelId ? (
-                          <Chip label="Current" color="primary" size="small" />
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+        {/* Global Kernel Status */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>Global Kernel Status</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip 
+              label={kernelStatus.charAt(0).toUpperCase() + kernelStatus.slice(1)}
+              color={kernelStatus === 'running' ? 'success' : kernelStatus === 'error' ? 'error' : 'default'}
+              variant="outlined"
+            />
+            <Typography variant="body2" fontFamily="monospace">
+              global-kernel
+            </Typography>
+          </Box>
         </Box>
 
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-          <Button onClick={onRefreshKernels} variant="outlined">
-            🔄 Refresh
+          <Button onClick={onRefreshStatus} variant="outlined">
+            🔄 Refresh Status
           </Button>
           <Button onClick={onClose} variant="contained">
             Close

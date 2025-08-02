@@ -10,10 +10,13 @@ class CodeExecutor:
         pass
     
     async def execute_code(self, kernel_id: str, code: str) -> List[Dict[str, Any]]:
-        """Execute code in a kernel and return the output"""
-        kernel_info = kernel_manager.get_kernel_info(kernel_id)
+        """Execute code in the global kernel and return the output"""
+        # Ensure the global kernel is running
+        await kernel_manager.ensure_kernel_running()
+        
+        kernel_info = kernel_manager.get_kernel_info()
         if not kernel_info:
-            raise Exception(f"Kernel {kernel_id} not found")
+            raise Exception("Global kernel not available")
         
         # Create a kernel manager and client for execution
         km = AsyncKernelManager()
@@ -86,22 +89,20 @@ class CodeExecutor:
             kc.stop_channels()
     
     async def get_kernel_status(self, kernel_id: str) -> str:
-        """Get the status of a kernel"""
-        kernel_info = kernel_manager.get_kernel_info(kernel_id)
-        if not kernel_info:
-            return 'stopped'
-        
-        process = kernel_info['process']
-        if process.poll() is None:
+        """Get the status of the global kernel"""
+        if kernel_manager.is_kernel_alive():
             return 'running'
         else:
             return 'stopped'
     
     async def get_completions(self, kernel_id: str, code: str, cursor_pos: int) -> list:
-        """Get code completions from the kernel"""
-        kernel_info = kernel_manager.get_kernel_info(kernel_id)
+        """Get code completions from the global kernel"""
+        # Ensure the global kernel is running
+        await kernel_manager.ensure_kernel_running()
+        
+        kernel_info = kernel_manager.get_kernel_info()
         if not kernel_info:
-            raise Exception(f"Kernel {kernel_id} not found")
+            raise Exception("Global kernel not available")
         
         # Create a kernel manager and client for completion
         km = AsyncKernelManager()

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Container, Alert, Snackbar } from '@mui/material';
 import { CompletionContext } from '@codemirror/autocomplete';
+import { io, Socket } from 'socket.io-client';
 import { 
   Header, 
   Sidebar, 
@@ -34,97 +35,106 @@ function App() {
   const [currentNotebook, setCurrentNotebook] = useState<string | null>(null);
   const [notebookContent, setNotebookContent] = useState<NotebookCellType[]>([]);
   const [kernelStatus, setKernelStatus] = useState<KernelStatus>('idle');
-  const [kernelId, setKernelId] = useState<string | null>(null);
   const [newNotebookName, setNewNotebookName] = useState<string>('');
   const [alert, setAlert] = useState<
     | { message: string; severity: 'success' | 'error' | 'warning' | 'info' }
     | null
   >(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-  const [websocket, setWebsocket] = useState<WebSocket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [executingCells, setExecutingCells] = useState<Set<number>>(new Set());
   const [editingMarkdownCells, setEditingMarkdownCells] = useState<Set<number>>(new Set());
   const [debugModalOpen, setDebugModalOpen] = useState<boolean>(false);
-  const [allKernels, setAllKernels] = useState<any[]>([]);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(true);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(false);
+  
+  // Use ref to avoid stale closure issues
+  const socketRef = useRef<Socket | null>(null);
 
   // Effects
   useEffect(() => {
     loadNotebooks();
-    checkAndStartKernel();
-  }, []);
-
-  useEffect(() => {
-    if (kernelId && !websocket) {
-      connectWebSocket();
-    }
+    checkKernelStatus();
+    connectSocket();
+    
+    // Cleanup on unmount
     return () => {
-      if (websocket) {
-        websocket.close();
+      if (socketRef.current) {
+        console.log('Cleaning up socket connection on unmount');
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
-  }, [kernelId]);
+  }, []); // Empty dependency - only run on mount/unmount
 
-  // Kernel and WebSocket functions
-  const checkAndStartKernel = async () => {
+  // Check global kernel status
+  const checkKernelStatus = async () => {
     try {
       const res = await fetch('/api/v1/kernel/status');
       if (res.ok) {
         const data = await res.json();
-        if (data.status === 'running' && data.kernel_id) {
-          setKernelId(data.kernel_id);
-          setKernelStatus('running');
-          console.log('Global kernel already running:', data.kernel_id);
-        } else {
-          await startKernel();
-        }
+        setKernelStatus(data.status === 'running' ? 'running' : 'idle');
+        console.log('Global kernel status:', data.status);
       }
     } catch (error) {
       console.error('Failed to check kernel status:', error);
-      await startKernel();
+      setKernelStatus('error');
     }
   };
 
-  const connectWebSocket = () => {
-    if (!kernelId) return;
+  const connectSocket = () => {
+    // Don't create a new connection if one already exists
+    if (socketRef.current && socketRef.current.connected) {
+      console.log('Socket already connected, skipping connection attempt');
+      return;
+    }
     
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/kernels/${kernelId}/ws`;
+    console.log('Creating new Socket.IO connection...');
+    const socketInstance = io(window.location.origin, {
+      transports: ['websocket', 'polling'],
+      upgrade: true
+    });
     
-    const ws = new WebSocket(wsUrl);
+    // Store in ref immediately
+    socketRef.current = socketInstance;
     
-    ws.onopen = () => {
-      console.log('WebSocket connected to kernel:', kernelId);
-      setWebsocket(ws);
-      showAlert('WebSocket connected', 'info');
-    };
+    socketInstance.on('connect', () => {
+      console.log('Socket.IO connected to global kernel');
+      setSocket(socketInstance);
+      setKernelStatus('running');
+      showAlert('Connected to global kernel', 'info');
+    });
     
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
-        handleWebSocketMessage(data);
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
-      }
-    };
+    socketInstance.on('connected', (data) => {
+      console.log('Socket.IO connection confirmed:', data);
+    });
     
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      setWebsocket(null);
-      if (kernelStatus === 'running') {
-        setTimeout(() => connectWebSocket(), 2000);
-      }
-    };
+    socketInstance.on('execution_result', (data) => {
+      console.log('Socket.IO execution result received:', data);
+      handleSocketMessage(data);
+    });
     
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      showAlert('WebSocket connection error', 'error');
-    };
+    socketInstance.on('error', (data) => {
+      console.error('Socket.IO error:', data);
+      showAlert(`Socket.IO error: ${data.message}`, 'error');
+    });
+    
+    socketInstance.on('disconnect', (reason) => {
+      console.log('Socket.IO disconnected:', reason);
+      setSocket(null);
+      socketRef.current = null;
+      setKernelStatus('idle');
+      showAlert('Disconnected from server', 'warning');
+    });
+    
+    socketInstance.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+      showAlert('Socket.IO connection error', 'error');
+      setKernelStatus('error');
+    });
   };
 
-  const handleWebSocketMessage = (data: any) => {
-    if (data.type === 'execution_result' && typeof data.cell_index === 'number') {
+  const handleSocketMessage = (data: any) => {
+    if (typeof data.cell_index === 'number') {
       const cellIndex = data.cell_index;
       
       if (data.status === 'running') {
@@ -135,10 +145,11 @@ function App() {
           newSet.delete(cellIndex);
           return newSet;
         });
-        setAutoSaveEnabled(true);
-        if (currentNotebook) {
-          setTimeout(() => saveNotebook(), 100);
-        }
+        // Auto-save disabled for now to prevent server reload issues
+        // setAutoSaveEnabled(true);
+        // if (currentNotebook) {
+        //   setTimeout(() => saveNotebook(), 100);
+        // }
       }
       
       if (data.output) {
@@ -246,9 +257,10 @@ function App() {
   // Cell functions
   const addCell = () => {
     setNotebookContent((prev) => [...prev, { cell_type: 'code', source: [''], outputs: [] }]);
-    if (currentNotebook && autoSaveEnabled) {
-      setTimeout(() => saveNotebook(), 100);
-    }
+    // Auto-save disabled - manual save only
+    // if (currentNotebook && autoSaveEnabled) {
+    //   setTimeout(() => saveNotebook(), 100);
+    // }
   };
 
   const updateCell = (index: number, patch: Partial<NotebookCellType>) => {
@@ -257,9 +269,10 @@ function App() {
       next[index] = { ...next[index], ...patch };
       return next;
     });
-    if (currentNotebook && autoSaveEnabled) {
-      setTimeout(() => saveNotebook(), 100);
-    }
+    // Auto-save disabled - manual save only
+    // if (currentNotebook && autoSaveEnabled) {
+    //   setTimeout(() => saveNotebook(), 100);
+    // }
   };
 
   const executeCell = async (index: number) => {
@@ -269,31 +282,41 @@ function App() {
       showAlert('Cell is empty', 'warning');
       return;
     }
-    
-    if (!kernelId) {
-      showAlert('No kernel running. Please start a kernel first.', 'warning');
-      return;
-    }
 
-    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-      showAlert('WebSocket not connected. Falling back to HTTP execution.', 'warning');
-      // HTTP fallback logic would go here
-      return;
+    const currentSocket = socketRef.current;
+    if (!currentSocket || !currentSocket.connected) {
+      showAlert('Socket.IO not connected. Trying to execute via HTTP...', 'warning');
+      // HTTP fallback
+      try {
+        const res = await fetch('/api/v1/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: cell.source.join('') })
+        });
+        if (!res.ok) throw new Error(`Execution failed: ${res.status}`);
+        const data = await res.json();
+        updateCell(index, { outputs: data.outputs || [] });
+        showAlert('Executed via HTTP fallback', 'info');
+        return;
+      } catch (error) {
+        console.error(error);
+        showAlert('HTTP execution also failed', 'error');
+        return;
+      }
     }
     
     try {
-      setAutoSaveEnabled(false);
+      // setAutoSaveEnabled(false);
       updateCell(index, { outputs: [] });
       setExecutingCells(prev => new Set(prev).add(index));
       
       const message = {
-        type: 'execute_code',
         cell_index: index,
         code: cell.source.join('')
       };
       
-      console.log('Sending WebSocket message:', message);
-      websocket.send(JSON.stringify(message));
+      console.log('Sending Socket.IO message:', message);
+      currentSocket.emit('execute_code', message);
     } catch (error) {
       console.error(error);
       showAlert('Execution failed', 'error');
@@ -302,55 +325,35 @@ function App() {
         newSet.delete(index);
         return newSet;
       });
-      setAutoSaveEnabled(true);
+      // setAutoSaveEnabled(true);
     }
   };
 
   // Kernel functions
-  const startKernel = async () => {
+  const resetKernel = async () => {
     try {
-      const res = await fetch('/api/v1/kernels', { method: 'POST' });
-      if (!res.ok) throw new Error(`Failed to start kernel: ${res.status}`);
-      const data = await res.json();
-      setKernelId(data.kernel_id);
+      const res = await fetch('/api/v1/kernel/reset', { method: 'POST' });
+      if (!res.ok) throw new Error(`Failed to reset kernel: ${res.status}`);
       setKernelStatus('running');
-      showAlert('Global kernel started', 'success');
+      setExecutingCells(new Set());
+      showAlert('Global kernel reset successfully', 'success');
     } catch (error) {
       console.error(error);
       setKernelStatus('error');
-      showAlert('Failed to start kernel', 'error');
+      showAlert('Failed to reset kernel', 'error');
     }
   };
 
-  const stopKernel = async () => {
-    if (!kernelId) return;
-    
-    const currentKernelId = kernelId;
-    
+  const ensureKernel = async () => {
     try {
-      if (websocket) {
-        websocket.close();
-        setWebsocket(null);
-      }
-      
-      setKernelStatus('idle');
-      setKernelId(null);
-      setExecutingCells(new Set());
-      
-      const res = await fetch(`/api/v1/kernels/${currentKernelId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        console.error(`Kernel stop returned ${res.status}, but frontend cleaned up`);
-        showAlert('Global kernel stopped (with cleanup issues)', 'warning');
-      } else {
-        showAlert('Global kernel stopped', 'info');
-      }
+      const res = await fetch('/api/v1/kernel/ensure', { method: 'POST' });
+      if (!res.ok) throw new Error(`Failed to ensure kernel: ${res.status}`);
+      setKernelStatus('running');
+      showAlert('Global kernel ensured', 'success');
     } catch (error) {
-      console.error('Kernel stop error:', error);
-      setKernelStatus('idle');
-      setKernelId(null);
-      setExecutingCells(new Set());
-      setWebsocket(null);
-      showAlert('Global kernel stopped (with cleanup issues)', 'warning');
+      console.error(error);
+      setKernelStatus('error');
+      showAlert('Failed to ensure kernel', 'error');
     }
   };
 
@@ -366,8 +369,6 @@ function App() {
   };
 
   const pythonCompletion = async (context: CompletionContext) => {
-    if (!kernelId) return null;
-
     const word = context.matchBefore(/\w*$/);
     if (!word || (word.from === word.to && !context.explicit)) return null;
 
@@ -375,7 +376,7 @@ function App() {
       const code = context.state.doc.toString();
       const cursor_pos = context.pos;
       
-      const response = await fetch(`/api/v1/kernels/${kernelId}/complete`, {
+      const response = await fetch('/api/v1/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, cursor_pos })
@@ -403,27 +404,15 @@ function App() {
   };
 
   // Debug functions
-  const loadAllKernels = async () => {
-    try {
-      const res = await fetch('/api/v1/kernels');
-      if (res.ok) {
-        const data = await res.json();
-        setAllKernels(Object.entries(data).map(([id, info]: [string, any]) => ({ id, ...info })));
-      }
-    } catch (error) {
-      console.error('Failed to load kernels:', error);
-    }
+  const refreshKernelStatus = async () => {
+    await checkKernelStatus();
   };
 
-  const getWebSocketStatus = () => {
-    if (!websocket) return 'Not Connected';
-    switch (websocket.readyState) {
-      case WebSocket.CONNECTING: return 'Connecting';
-      case WebSocket.OPEN: return 'Connected';
-      case WebSocket.CLOSING: return 'Closing';
-      case WebSocket.CLOSED: return 'Closed';
-      default: return 'Unknown';
-    }
+  const getSocketStatus = () => {
+    // Use state to trigger re-renders, but check ref for actual status
+    const currentSocket = socketRef.current || socket;
+    if (!currentSocket) return 'Not Connected';
+    return currentSocket.connected ? 'Connected' : 'Disconnected';
   };
 
   // Component handlers
@@ -431,14 +420,15 @@ function App() {
   
   const handleOpenDebugModal = () => {
     setDebugModalOpen(true);
-    loadAllKernels();
+    refreshKernelStatus();
   };
   
   const handleDeleteCell = (index: number) => {
     setNotebookContent(prev => prev.filter((_, i) => i !== index));
-    if (currentNotebook && autoSaveEnabled) {
-      setTimeout(() => saveNotebook(), 100);
-    }
+    // Auto-save disabled - manual save only
+    // if (currentNotebook && autoSaveEnabled) {
+    //   setTimeout(() => saveNotebook(), 100);
+    // }
   };
   
   const handleToggleMarkdownEdit = (index: number) => {
@@ -492,8 +482,8 @@ function App() {
               onOpenNotebook={openNotebook}
               onDeleteNotebook={deleteNotebook}
               kernelStatus={kernelStatus}
-              onStartKernel={startKernel}
-              onStopKernel={stopKernel}
+              onResetKernel={resetKernel}
+              onEnsureKernel={ensureKernel}
             />
           )}
 
@@ -518,10 +508,9 @@ function App() {
       <DebugModal
         open={debugModalOpen}
         onClose={() => setDebugModalOpen(false)}
-        websocketStatus={getWebSocketStatus()}
-        kernelId={kernelId}
-        allKernels={allKernels}
-        onRefreshKernels={loadAllKernels}
+        websocketStatus={getSocketStatus()}
+        kernelStatus={kernelStatus}
+        onRefreshStatus={refreshKernelStatus}
       />
     </ThemeProvider>
   );

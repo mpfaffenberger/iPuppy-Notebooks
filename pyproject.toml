@@ -11,7 +11,8 @@ dependencies = [
     "notebook>=6.4.0",
     "python-multipart>=0.0.5",
     "aiofiles>=0.7.0",
-    "websockets>=10.0"
+    "websockets>=10.0",
+    "python-socketio>=5.13.0",
 ]
 
 [build-system]
