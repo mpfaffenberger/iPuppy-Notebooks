@@ -1,0 +1,5 @@
+I'm already running the FastAPI app at localhost:8080
+
+and the npm run build:watch script is populating the JS/TS part of it. 
+
+The react app is actually served by FastAPI!

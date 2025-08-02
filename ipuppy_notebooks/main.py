@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, Body
+from fastapi import FastAPI, Request, HTTPException, Body, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import logging
@@ -14,6 +14,7 @@ app = FastAPI(title="iPuppy Notebooks", description="A Jupyter notebook clone wi
 
 templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
 app.mount("/static", StaticFiles(directory="ipuppy_notebooks/static"), name="static")
+app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
 
 # Create directories if they don't exist
 os.makedirs("kernels", exist_ok=True)
@@ -22,9 +23,19 @@ os.makedirs("kernels", exist_ok=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@app.get("/")
+@app.get("/old_app")
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+# Mount the React app's static files under /app
+app.mount("/", StaticFiles(directory="dist", html=True), name="react_app")
+
+# Alternative way to serve the React app's index.html directly
+@app.get("/react")
+async def react_index():
+    with open("dist/index.html", "r") as f:
+        content = f.read()
+    return Response(content=content, media_type="text/html")
 
 @app.get("/api/v1/notebooks")
 async def list_notebooks():

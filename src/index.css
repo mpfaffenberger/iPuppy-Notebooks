@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    @apply bg-base text-content-body;
+  }
+  
+  body {
+    @apply bg-base text-content-body min-h-screen;
+  }
+}
+
+@layer components {
+  .notebook-cell {
+    @apply mb-4 border border-surface rounded-lg overflow-hidden;
+  }
+  
+  .cell-header {
+    @apply bg-surface p-3 border-b border-base flex justify-between items-center;
+  }
+  
+  .cell-content {
+    @apply p-4;
+  }
+  
+  .cell-output {
+    @apply p-4 bg-surface border-t border-base;
+  }
+  
+  .sidebar {
+    @apply bg-surface rounded-lg p-4;
+  }
+}
