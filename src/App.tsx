@@ -1,7 +1,22 @@
 import { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Button, Box, Container, Grid, Card, CardContent, Typography, Select, MenuItem, IconButton, Alert } from '@mui/material';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Box,
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  Select,
+  MenuItem,
+  Button,
+  IconButton,
+  Alert,
+  Snackbar,
+} from '@mui/material';
 import { PlayArrow, Stop, Add, Save, Delete } from '@mui/icons-material';
 import { marked } from 'marked';
 import CodeMirror from '@uiw/react-codemirror';
@@ -9,38 +24,51 @@ import { python } from '@codemirror/lang-python';
 import { dracula } from '@uiw/codemirror-theme-dracula';
 import './index.css';
 
-// Set up marked with security options
-marked.setOptions({
-  sanitize: true,
-  highlight: (code, lang) => {
-    // Simple highlighting for code blocks
-    return code;
-  }
-});
+// Configure marked for sanitised markdown rendering
+marked.setOptions({});
+
+export type NotebookCell = {
+  cell_type: 'code' | 'markdown';
+  source: string[];
+  outputs?: string[];
+};
+
+const darkTheme = createTheme({ palette: { mode: 'dark' } });
 
 function App() {
+  /** ------------------------------------------------------
+   *  -------------  Local component state  ----------------
+   *  ---------------------------------------------------- */
   const [notebooks, setNotebooks] = useState<string[]>([]);
   const [currentNotebook, setCurrentNotebook] = useState<string | null>(null);
-  const [notebookContent, setNotebookContent] = useState<any[]>([]);
+  const [notebookContent, setNotebookContent] = useState<NotebookCell[]>([]);
   const [kernelStatus, setKernelStatus] = useState<'idle' | 'running' | 'error'>('idle');
-  const [alert, setAlert] = useState<{message: string, severity: 'success' | 'error' | 'warning' | 'info'} | null>(null);
-  const [newNotebookName, setNewNotebookName] = useState('');
+  const [newNotebookName, setNewNotebookName] = useState<string>('');
+  const [alert, setAlert] = useState<
+    | { message: string; severity: 'success' | 'error' | 'warning' | 'info' }
+    | null
+  >(null);
 
-  // Load notebooks on component mount
+  /** ------------------------------------------------------
+   *  ------------------  Effects  -------------------------
+   *  ---------------------------------------------------- */
   useEffect(() => {
+    // Initial load
     loadNotebooks();
   }, []);
 
+  /** ------------------------------------------------------
+   *  ----------------  API  MOCKS  ------------------------
+   *  Replace these with real API calls once backend ready.
+   *  ---------------------------------------------------- */
   const loadNotebooks = async () => {
     try {
-      // Mock API call - replace with actual API call
-      // const response = await fetch('/api/v1/notebooks');
-      // const data = await response.json();
-      // setNotebooks(data.notebooks);
-      
-      // For now, using mock data
-      setNotebooks(['notebook1.py', 'notebook2.py', 'test_notebook.py']);
+      const res = await fetch('/api/v1/notebooks');
+      if (!res.ok) throw new Error(`Failed to load notebooks: ${res.status}`);
+      const data = await res.json();
+      setNotebooks(data.notebooks);
     } catch (error) {
+      console.error(error);
       showAlert('Failed to load notebooks', 'error');
     }
   };
@@ -50,424 +78,340 @@ function App() {
       showAlert('Please enter a notebook name', 'warning');
       return;
     }
-
-    const notebookName = newNotebookName.trim().endsWith('.py') ? newNotebookName.trim() : newNotebookName.trim() + '.py';
-    
+    const finalName = newNotebookName.trim().endsWith('.py')
+      ? newNotebookName.trim()
+      : `${newNotebookName.trim()}.py`;
     try {
-      // Mock API call
-      // await fetch(`/api/v1/notebooks/${notebookName}`, { method: 'POST' });
-      
-      setNotebooks([...notebooks, notebookName]);
+      const res = await fetch(`/api/v1/notebooks/${finalName}`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Failed to create notebook: ${res.status}`);
+      setNotebooks((prev) => [...prev, finalName]);
       setNewNotebookName('');
-      showAlert(`Notebook ${notebookName} created successfully`, 'success');
+      showAlert(`Notebook ${finalName} created successfully`, 'success');
     } catch (error) {
-      showAlert(`Failed to create notebook: ${error.message}`, 'error');
+      console.error(error);
+      showAlert('Failed to create notebook', 'error');
     }
   };
 
-  const deleteNotebook = async (notebookName: string) => {
-    if (!confirm(`Are you sure you want to delete ${notebookName}?`)) {
-      return;
-    }
-
+  const deleteNotebook = async (name: string) => {
+    if (!confirm(`Delete ${name}?`)) return;
     try {
-      // Mock API call
-      // await fetch(`/api/v1/notebooks/${notebookName}`, { method: 'DELETE' });
-      
-      setNotebooks(notebooks.filter(nb => nb !== notebookName));
-      
-      // If we're currently viewing this notebook, close it
-      if (currentNotebook === notebookName) {
+      // await fetch(`/api/v1/notebooks/${name}`, { method: 'DELETE' });
+      setNotebooks((prev) => prev.filter((n) => n !== name));
+      if (currentNotebook === name) {
         setCurrentNotebook(null);
         setNotebookContent([]);
       }
-      
-      showAlert(`Notebook ${notebookName} deleted successfully`, 'success');
-    } catch (error) {
-      showAlert(`Failed to delete notebook: ${error.message}`, 'error');
+      showAlert(`Notebook ${name} deleted`, 'success');
+    } catch {
+      showAlert('Failed to delete notebook', 'error');
     }
   };
 
-  const openNotebook = async (notebookName: string) => {
+  const openNotebook = async (name: string) => {
     try {
-      // Mock API call
-      // const response = await fetch(`/api/v1/notebooks/${notebookName}`);
-      // const data = await response.json();
-      
-      // For now, using mock data
-      const mockData = {
-        cells: [
-          { cell_type: 'code', source: ['print("Hello, World!")'], outputs: ['Hello, World!\n'] },
-          { cell_type: 'markdown', source: ['## This is a markdown cell\n\nThis is some **bold text** and *italic text*.'] }
-        ]
-      };
-      
-      setCurrentNotebook(notebookName);
-      setNotebookContent(mockData.cells);
-    } catch (error) {
-      showAlert(`Failed to open notebook: ${error.message}`, 'error');
-    }
-  };
-
-  const addCell = () => {
-    setNotebookContent([...notebookContent, { cell_type: 'code', source: [''], outputs: [] }]);
-  };
-
-  const executeCell = async (index: number) => {
-    const cell = notebookContent[index];
-    
-    if (!cell.source || !cell.source.join('').trim()) {
-      showAlert('Cell is empty', 'warning');
-      return;
-    }
-
-    // Mock execution
-    if (cell.cell_type === 'code') {
-      // Simulate code execution
-      const outputs = [cell.source.join(' ') + '\n'];
-      
-      const updatedContent = [...notebookContent];
-      updatedContent[index] = { ...cell, outputs };
-      setNotebookContent(updatedContent);
-    }
-  };
-
-  const startKernel = async () => {
-    setKernelStatus('running');
-    
-    try {
-      // Mock API call
-      // const response = await fetch('/api/v1/kernels', { method: 'POST' });
-      // const data = await response.json();
-      // currentKernelId = data.kernel_id;
-      
-      setKernelStatus('running');
-      showAlert('Kernel started successfully', 'success');
-    } catch (error) {
-      setKernelStatus('error');
-      showAlert(`Failed to start kernel: ${error.message}`, 'error');
-    }
-  };
-
-  const stopKernel = async () => {
-    if (kernelStatus === 'idle') {
-      showAlert('No kernel is currently running', 'warning');
-      return;
-    }
-
-    setKernelStatus('idle');
-    
-    try {
-      // Mock API call
-      // await fetch(`/api/v1/kernels/${currentKernelId}`, { method: 'DELETE' });
-      
-      setKernelStatus('idle');
-      showAlert('Kernel stopped successfully', 'info');
-    } catch (error) {
-      setKernelStatus('error');
-      showAlert(`Failed to stop kernel: ${error.message}`, 'error');
+      // const res = await fetch(`/api/v1/notebooks/${name}`);
+      // const data = await res.json();
+      // setNotebookContent(data.cells);
+      const mockCells: NotebookCell[] = [
+        { cell_type: 'code', source: ['print("Hello World")'], outputs: ['Hello World\n'] },
+        { cell_type: 'markdown', source: ['## Markdown cell\n\nAwesome content!'] },
+      ];
+      setCurrentNotebook(name);
+      setNotebookContent(mockCells);
+    } catch {
+      showAlert('Failed to open notebook', 'error');
     }
   };
 
   const saveNotebook = async () => {
-    if (!currentNotebook) {
-      showAlert('No notebook is currently open', 'warning');
-      return;
-    }
-
+    if (!currentNotebook) return;
     try {
-      // Mock API call
       // await fetch(`/api/v1/notebooks/${currentNotebook}`, {
       //   method: 'PUT',
       //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ cells: notebookContent })
+      //   body: JSON.stringify({ cells: notebookContent }),
       // });
-      
-      showAlert(`Notebook ${currentNotebook} saved successfully`, 'success');
-    } catch (error) {
-      showAlert(`Failed to save notebook: ${error.message}`, 'error');
+      showAlert(`Saved ${currentNotebook}`, 'success');
+    } catch {
+      showAlert('Failed to save notebook', 'error');
     }
   };
 
-  const updateCell = (index: number, field: 'source' | 'cell_type', value: any) => {
-    const updatedContent = [...notebookContent];
-    if (field === 'source') {
-      updatedContent[index] = { ...updatedContent[index], source: [value] };
-    } else {
-      updatedContent[index] = { ...updatedContent[index], cell_type: value };
-    }
-    setNotebookContent(updatedContent);
+  /** ------------------------------------------------------
+   *  ---------------  Cell manipulation -------------------
+   *  ---------------------------------------------------- */
+  const addCell = () => {
+    setNotebookContent((prev) => [...prev, { cell_type: 'code', source: [''], outputs: [] }]);
   };
 
+  const updateCell = (index: number, patch: Partial<NotebookCell>) => {
+    setNotebookContent((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  };
+
+  const executeCell = async (index: number) => {
+    const cell = notebookContent[index];
+    if (cell.cell_type !== 'code') return;
+    if (!cell.source.join('').trim()) {
+      showAlert('Cell is empty', 'warning');
+      return;
+    }
+    try {
+      // const res = await fetch(`/api/v1/kernels/execute`, { ... });
+      // const data = await res.json();
+      const mockOutput = [`Executed: ${cell.source.join('')}
+`];
+      updateCell(index, { outputs: mockOutput });
+    } catch {
+      showAlert('Execution failed', 'error');
+    }
+  };
+
+  /** ------------------------------------------------------
+   *  ------------------  Kernel  --------------------------
+   *  ---------------------------------------------------- */
+  const startKernel = async () => {
+    try {
+      setKernelStatus('running');
+      // await fetch('/api/v1/kernels', { method: 'POST' });
+      showAlert('Kernel started', 'success');
+    } catch {
+      setKernelStatus('error');
+      showAlert('Failed to start kernel', 'error');
+    }
+  };
+
+  const stopKernel = async () => {
+    try {
+      setKernelStatus('idle');
+      // await fetch('/api/v1/kernels/current', { method: 'DELETE' });
+      showAlert('Kernel stopped', 'info');
+    } catch {
+      setKernelStatus('error');
+      showAlert('Failed to stop kernel', 'error');
+    }
+  };
+
+  /** ------------------------------------------------------
+   *  -----------------  UI helpers  -----------------------
+   *  ---------------------------------------------------- */
   const showAlert = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setAlert({ message, severity });
-    setTimeout(() => setAlert(null), 3000);
   };
 
+  const handleAlertClose = () => setAlert(null);
+
+  /** ------------------------------------------------------
+   *  ---------------------  JSX  --------------------------
+   *  ---------------------------------------------------- */
   return (
-    <ThemeProvider theme={createTheme({ palette: { mode: 'dark' } })}>
+    <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Box className="dark" style={{ minHeight: '100vh', backgroundColor: '#121212' }}>
-        {/* Alert container */}
-        {alert && (
-          <Box sx={{ position: 'fixed', top: 16, right: 16, zIndex: 1300, width: 'auto' }}>
-            <Alert severity={alert.severity} onClose={() => setAlert(null)}>
-              {alert.message}
-            </Alert>
-          </Box>
-        )}
+      {/* Global snackbar for alerts */}
+      <Snackbar
+        open={!!alert}
+        autoHideDuration={4000}
+        onClose={handleAlertClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        {alert ? (
+          <Alert severity={alert.severity} onClose={handleAlertClose} variant="filled">
+            {alert.message}
+          </Alert>
+        )  : <span />}
+      </Snackbar>
 
-        // Navbar
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', p: 2 }}>
-          <Container maxWidth="xl">
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              <Box sx={{ display: 'flex', alignItems: 'center' }}
-                <Typography variant="h6" component="div" sx={{ mr: 2 }} style={{ color: '#8a2be2' }}
-                  <span style={{ marginRight: '8px' }}><i className="fas fa-paw"></i></span>
-                  iPuppy Notebooks
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}
-                {currentNotebook && (
-                  <>
-                    <Typography variant="body1" sx={{ mr: 2 }}>
-                      {currentNotebook}
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      startIcon={<Save />}
-                      onClick={saveNotebook}
-                      size="small"
-                      sx={{ mr: 1 }}
-                    >
-                      Save
-                    </Button>
-                  </>
-                )}
-              </Box>
-            </Container>
-          </Box>
-        </Box>
+      {/* App bar */}
+      <AppBar position="static" color="default">
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <i className="fas fa-paw" /> iPuppy Notebooks
+          </Typography>
+          {currentNotebook && (
+            <Box display="flex" alignItems="center" gap={2}>
+              <Typography>{currentNotebook}</Typography>
+              <Button variant="contained" size="small" startIcon={<Save />} onClick={saveNotebook}>
+                Save
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
 
-        // Main content
-        <Container maxWidth="xl" sx={{ mt: 3, flexGrow: 1 }}
-          <Grid container spacing={3}>>
-            // Sidebar
-            <Grid item xs={12} md={3}>
-              // Notebooks list
-              <Card className="sidebar" sx={{ mb: 3 }}
-                <CardContent>
-                  <Typography variant="h5" gutterBottom>
-                    Notebooks
-                  </Typography>
-                  <Box id="file-list">
-                    {notebooks.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
-                        No notebooks yet
-                      </Typography>
-                    ) : (
-                      notebooks.map((notebook) => (
-                        <Box
-                          key={notebook}
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            p: 1,
-                            mb: 1,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                            backgroundColor: 'surface'
-                          }}
+      {/* Main layout */}
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
+        <Grid container spacing={3}>
+          {/* ---------------- Sidebar ---------------- */}
+          <Grid item xs={12} md={3}>
+            {/* Notebook list */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h5" gutterBottom>Notebooks</Typography>
+                <Box>
+                  {notebooks.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">No notebooks yet</Typography>
+                  ) : (
+                    notebooks.map((nb) => (
+                      <Box
+                        key={nb}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          p: 1,
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                      >
+                        <Typography
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => openNotebook(nb)}
                         >
-                          <Typography variant="body1" onClick={() => openNotebook(notebook)} style={{ cursor: 'pointer' }}>
-                            {notebook}
-                          </Typography>
-                          <Box>
-                            <IconButton
-                              size="small"
-                              onClick={() => openNotebook(notebook)}
-                              aria-label="run notebook"
-                              color="success"
-                            >
-                              <PlayArrow fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => deleteNotebook(notebook)}
-                              aria-label="delete notebook"
-                              color="error"
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </Box>
-                      ))
-                    )}
-                  </Box>
-                  // Form
-                  <Box sx={{ mt: 3, display: 'flex', gap: 1 }}>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={newNotebookName}
-                      onChange={(e) => setNewNotebookName(e.target.value)}
-                      placeholder="Notebook name"
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        borderRadius: '4px',
-                        border: '1px solid #444',
-                        backgroundColor: '#1e1e1e',
-                        color: '#e5e5e5'
-                      }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={createNotebook}
-                      startIcon={<Add />}
-                    >
-                      Create
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-
-              // Kernel status
-              <Card className="sidebar">
-                <CardContent>
-                  <Typography variant="h5" gutterBottom>
-                    Kernel Status
-                  </Typography>
-                  <Box
-                    id="kernel-status"
-                    sx={{
-                      p: 2,
-                      mb: 2,
-                      borderRadius: 1,
-                      backgroundColor:
-                        kernelStatus === 'idle' ? 'action.disabled' :
-                        kernelStatus === 'running' ? 'success.dark' : 'error.dark',
-                      color: 'common.white',
-                      textAlign: 'center'
-                    }}
-                  >
-                    {kernelStatus === 'idle' ? 'Idle' : kernelStatus === 'running' ? 'Running' : 'Error'}
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="contained"
-                      onClick={startKernel}
-                      startIcon={<PlayArrow />}
-                      fullWidth
-                      disabled={kernelStatus === 'running'}
-                    >
-                      Start
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={stopKernel}
-                      startIcon={<Stop />}
-                      fullWidth
-                      disabled={kernelStatus === 'idle'}
-                      color="error"
-                    >
-                      Stop
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            // Main content area
-            <Grid item xs={12} md={9}>
-              {currentNotebook ? (
-                <Box id="notebook-container">
-                  {notebookContent.map((cell, index) => (
-                    <Box key={index} className="notebook-cell">
-                      <Box className="cell-header">
-                        <Select
-                          value={cell.cell_type}
-                          onChange={(e) => updateCell(index, 'cell_type', e.target.value)}
-                          size="small"
-                          sx={{ minWidth: 100 }}
-                        >
-                          <MenuItem value="code">Code</MenuItem>
-                          <MenuItem value="markdown">Markdown</MenuItem>
-                        </Select>
+                          {nb}
+                        </Typography>
                         <Box>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => executeCell(index)}
-                            startIcon={<PlayArrow />}
-                            sx={{ mr: 1 }}
-                          >
-                            Run
-                          </Button>
+                          <IconButton size="small" color="success" onClick={() => openNotebook(nb)}>
+                            <PlayArrow fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => deleteNotebook(nb)}>
+                            <Delete fontSize="small" />
+                          </IconButton>
                         </Box>
                       </Box>
-                      <Box className="cell-content">
-                        {cell.cell_type === 'markdown' ? (
-                          <textarea
-                            value={cell.source.join('')}
-                            onChange={(e) => updateCell(index, 'source', e.target.value)}
-                            rows={5}
-                            style={{
-                              width: '100%',
-                              padding: '8px',
-                              borderRadius: '4px',
-                              border: '1px solid #444',
-                              backgroundColor: '#1e1e1e',
-                              color: '#e5e5e5',
-                              fontFamily: 'monospace'
-                            }}
-                          />
-                        ) : (
-                          <CodeMirror
-                            value={cell.source.join('')}
-                            height="200px"
-                            extensions={[python()]}
-                            theme={dracula}
-                            onChange={(value) => updateCell(index, 'source', value)}
-                          />
-                        )}
-                      </Box>
-                      <Box className="cell-output">
-                        {cell.outputs ? cell.outputs.join('') : 'No output yet'}
-                      </Box>
-                    </Box>
-                  ))}
+                    ))
+                  )}
                 </Box>
-              ) : (
-                <Box textAlign="center" mt={5} style={{ color: '#888' }}
-                  <Typography variant="h4" gutterBottom>
-                    Welcome to iPuppy Notebooks!
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Select a notebook or create a new one to get started
-                  </Typography>
-                  <i className="fas fa-paw fa-3x" style={{ color: '#8a2be2', marginTop: '20px' }}></i>
+                {/* Create notebook */}
+                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                  <input
+                    value={newNotebookName}
+                    onChange={(e) => setNewNotebookName(e.target.value)}
+                    placeholder="Notebook name"
+                    style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #555', background: '#1e1e1e', color: '#eaeaea' }}
+                  />
+                  <Button variant="contained" startIcon={<Add />} onClick={createNotebook}>
+                    Create
+                  </Button>
                 </Box>
-              )}
+              </CardContent>
+            </Card>
 
-              {currentNotebook && (
-                <Box sx={{ mt: 2 }}>
+            {/* Kernel status */}
+            <Card>
+              <CardContent>
+                <Typography variant="h5" gutterBottom>Kernel Status</Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    textAlign: 'center',
+                    borderRadius: 1,
+                    mb: 2,
+                    backgroundColor:
+                      kernelStatus === 'idle'
+                        ? 'action.disabledBackground'
+                        : kernelStatus === 'running'
+                        ? 'success.dark'
+                        : 'error.dark',
+                  }}
+                >
+                  {kernelStatus.charAt(0).toUpperCase() + kernelStatus.slice(1)}
+                </Box>
+                <Box display="flex" gap={1}>
                   <Button
                     variant="contained"
-                    onClick={addCell}
-                    startIcon={<Add />}
+                    startIcon={<PlayArrow />}
+                    fullWidth
+                    disabled={kernelStatus === 'running'}
+                    onClick={startKernel}
                   >
+                    Start
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={<Stop />}
+                    fullWidth
+                    disabled={kernelStatus === 'idle'}
+                    onClick={stopKernel}
+                  >
+                    Stop
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* --------------- Main area ---------------- */}
+          <Grid item xs={12} md={9}>
+            {currentNotebook ? (
+              <Box>
+                {notebookContent.map((cell, idx) => (
+                  <Box key={idx} className="notebook-cell">
+                    {/* Cell header */}
+                    <Box className="cell-header">
+                      <Select
+                        size="small"
+                        value={cell.cell_type}
+                        onChange={(e) =>
+                          updateCell(idx, { cell_type: e.target.value as 'code' | 'markdown' })
+                        }
+                        sx={{ width: 120 }}
+                      >
+                        <MenuItem value="code">Code</MenuItem>
+                        <MenuItem value="markdown">Markdown</MenuItem>
+                      </Select>
+                      <Button size="small" variant="contained" startIcon={<PlayArrow />} onClick={() => executeCell(idx)}>
+                        Run
+                      </Button>
+                    </Box>
+
+                    {/* Cell content */}
+                    <Box className="cell-content">
+                      {cell.cell_type === 'markdown' ? (
+                        <textarea
+                          style={{ width: '100%', minHeight: 120, background: '#1e1e1e', color: '#eaeaea', padding: 8 }}
+                          value={cell.source.join('')}
+                          onChange={(e) => updateCell(idx, { source: [e.target.value] })}
+                        />
+                      ) : (
+                        <CodeMirror
+                          value={cell.source.join('')}
+                          height="200px"
+                          extensions={[python()]}
+                          theme={dracula}
+                          onChange={(val) => updateCell(idx, { source: [val] })}
+                        />
+                      )}
+                    </Box>
+
+                    {/* Cell output */}
+                    <Box className="cell-output">
+                      {cell.outputs?.length ? cell.outputs.join('') : 'No output yet'}
+                    </Box>
+                  </Box>
+                ))}
+                <Box mt={2}>
+                  <Button variant="contained" startIcon={<Add />} onClick={addCell}>
                     Add Cell
                   </Button>
                 </Box>
-              )}
-            </Grid>
+              </Box>
+            ) : (
+              <Box textAlign="center" mt={8} color="text.secondary">
+                <Typography variant="h4" gutterBottom>Welcome to iPuppy Notebooks!</Typography>
+                <Typography gutterBottom>Select a notebook or create a new one to begin.</Typography>
+                <i className="fas fa-paw fa-3x" style={{ color: '#8a2be2' }} />
+              </Box>
+            )}
           </Grid>
-        </Container>
-      </Box>
-    </ThemeProvider>;
-  }
+        </Grid>
+      </Container>
+    </ThemeProvider>
+  );
+}
 
-  export default App;
+export default App;

@@ -16,6 +16,9 @@ templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
 app.mount("/static", StaticFiles(directory="ipuppy_notebooks/static"), name="static")
 app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
 
+# Mount the React app's static files at root
+app.mount("/", StaticFiles(directory="dist", html=True), name="react_app")
+
 # Create directories if they don't exist
 os.makedirs("kernels", exist_ok=True)
 
@@ -24,11 +27,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @app.get("/old_app")
-async def root(request: Request):
+async def old_app(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
-# Mount the React app's static files under /app
-app.mount("/", StaticFiles(directory="dist", html=True), name="react_app")
 
 # Alternative way to serve the React app's index.html directly
 @app.get("/react")
