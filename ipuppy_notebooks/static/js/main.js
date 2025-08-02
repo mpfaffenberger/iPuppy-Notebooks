@@ -58,7 +58,7 @@ async function apiRequest(url, method = 'GET', body = null) {
 // Kernel management functions
 async function startKernel() {
     try {
-        const response = await apiRequest('/kernels', 'POST');
+        const response = await apiRequest('/api/v1/kernels', 'POST');
         currentKernelId = response.kernel_id;
         
         const status = document.getElementById('kernel-status');
@@ -79,7 +79,7 @@ async function stopKernel() {
     }
     
     try {
-        const response = await apiRequest(`/kernels/${currentKernelId}`, 'DELETE');
+        const response = await apiRequest(`/api/v1/kernels/${currentKernelId}`, 'DELETE');
         currentKernelId = null;
         
         const status = document.getElementById('kernel-status');
@@ -100,7 +100,7 @@ async function executeCode(code) {
     }
     
     try {
-        const response = await apiRequest(`/kernels/${currentKernelId}/execute`, 'POST', {code: code});
+        const response = await apiRequest(`/api/v1/kernels/${currentKernelId}/execute`, 'POST', {code: code});
         return response.outputs;
     } catch (error) {
         console.error('Failed to execute code:', error);
@@ -118,7 +118,7 @@ async function saveNotebookToServer(notebookName, content) {
     }
     
     try {
-        const response = await apiRequest(`/notebooks/${notebookName}`, 'PUT', content);
+        const response = await apiRequest(`/api/v1/notebooks/${notebookName}`, 'PUT', content);
         return response;
     } catch (error) {
         console.error('Failed to save notebook:', error);

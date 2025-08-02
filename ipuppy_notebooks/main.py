@@ -10,7 +10,7 @@ from ipuppy_notebooks.kernels.manager import kernel_manager
 from ipuppy_notebooks.kernels.executor import executor
 from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
 
-app = FastAPI(title="iPuppy Notebooks", description="A Jupyter notebook clone with a modern dark mode UI")
+app = FastAPI(title="iPuppy Notebooks", description="A Jupyter notebook clone with a modern dark mode UI", docs_url="/api/v1/docs", redoc_url="/api/v1/redoc")
 
 templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
 app.mount("/static", StaticFiles(directory="ipuppy_notebooks/static"), name="static")
@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/notebooks")
+@app.get("/api/v1/notebooks")
 async def list_notebooks():
     notebooks_dir = Path(".")
     notebooks = [f.name for f in notebooks_dir.iterdir() if f.is_file() and f.suffix == ".py"]
     return {"notebooks": notebooks}
 
-@app.get("/notebooks/{notebook_name}")
+@app.get("/api/v1/notebooks/{notebook_name}")
 async def get_notebook(notebook_name: str):
     # support only .py notebooks for new files
     notebook_path = Path(f"./{notebook_name}")
@@ -46,7 +46,7 @@ async def get_notebook(notebook_name: str):
         with open(notebook_path, "r") as f:
             return json.load(f)
 
-@app.post("/notebooks/{notebook_name}")
+@app.post("/api/v1/notebooks/{notebook_name}")
 async def create_notebook(notebook_name: str):
     # sanitize filename and ensure .py extension only once
     if not notebook_name.endswith(".py"):
@@ -67,7 +67,7 @@ async def create_notebook(notebook_name: str):
     notebook_path.write_text(dump_py_notebook(initial_notebook), encoding="utf-8")
     return {"message": f"Notebook {notebook_path.name} created successfully"}
 
-@app.delete("/notebooks/{notebook_name}")
+@app.delete("/api/v1/notebooks/{notebook_name}")
 async def delete_notebook(notebook_name: str):
     notebook_path = Path(f"./{notebook_name}")
     if not notebook_path.exists():
@@ -77,7 +77,7 @@ async def delete_notebook(notebook_name: str):
     return {"message": f"Notebook {notebook_name} deleted successfully"}
 
 # Kernel Management Routes
-@app.post("/kernels")
+@app.post("/api/v1/kernels")
 async def start_kernel():
     try:
         kernel_id = await kernel_manager.start_kernel()
@@ -85,7 +85,7 @@ async def start_kernel():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/kernels/{kernel_id}")
+@app.delete("/api/v1/kernels/{kernel_id}")
 async def stop_kernel(kernel_id: str):
     try:
         result = await kernel_manager.stop_kernel(kernel_id)
@@ -96,7 +96,7 @@ async def stop_kernel(kernel_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/kernels/{kernel_id}/status")
+@app.get("/api/v1/kernels/{kernel_id}/status")
 async def get_kernel_status(kernel_id: str):
     try:
         status = await executor.get_kernel_status(kernel_id)
@@ -105,7 +105,7 @@ async def get_kernel_status(kernel_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Code Execution Route
-@app.post("/kernels/{kernel_id}/execute")
+@app.post("/api/v1/kernels/{kernel_id}/execute")
 async def execute_code(kernel_id: str, code: str = Body(..., embed=True)):
     try:
         outputs = await executor.execute_code(kernel_id, code)
@@ -114,7 +114,7 @@ async def execute_code(kernel_id: str, code: str = Body(..., embed=True)):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Notebook Save Route
-@app.put("/notebooks/{notebook_name}")
+@app.put("/api/v1/notebooks/{notebook_name}")
 async def save_notebook(notebook_name: str, request: Request):
     # Get the raw body first to debug what's being sent
     body = await request.body()

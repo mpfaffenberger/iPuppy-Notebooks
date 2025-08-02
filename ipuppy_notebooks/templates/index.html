@@ -78,7 +78,7 @@
     
     async function loadNotebooks() {
         try {
-            const response = await apiRequest('/notebooks');
+            const response = await apiRequest('/api/v1/notebooks');
             const fileList = document.getElementById('file-list');
             fileList.innerHTML = '';
             
@@ -120,7 +120,7 @@
         }
         
         try {
-            await apiRequest(`/notebooks/${nameInput.value}`, 'POST');
+            await apiRequest(`/api/v1/notebooks/${nameInput.value}`, 'POST');
             showAlert(`Notebook ${nameInput.value} created successfully`, 'success');
             nameInput.value = '';
             await loadNotebooks();
@@ -135,7 +135,7 @@
         }
         
         try {
-            await apiRequest(`/notebooks/${notebookName}`, 'DELETE');
+            await apiRequest(`/api/v1/notebooks/${notebookName}`, 'DELETE');
             showAlert(`Notebook ${notebookName} deleted successfully`, 'success');
             await loadNotebooks();
             
@@ -164,7 +164,7 @@
     
     async function openNotebook(notebookName) {
         try {
-            const notebook = await apiRequest(`/notebooks/${notebookName}`);
+            const notebook = await apiRequest(`/api/v1/notebooks/${notebookName}`);
             renderNotebook(notebookName, notebook);
         } catch (error) {
             showAlert(`Failed to open notebook: ${error.message}`, 'danger');
@@ -488,7 +488,7 @@
     
     async function saveNotebookContent(notebookName, content) {
         // This function will make the API call to save the notebook
-        await apiRequest(`/notebooks/${notebookName}`, 'PUT', content);
+        await saveNotebookToServer(notebookName, content);
     }
     
     async function startKernel() {
@@ -497,7 +497,7 @@
         status.className = 'kernel-status running';
         
         try {
-            const response = await apiRequest('/kernels', 'POST');
+            const response = await apiRequest('/api/v1/kernels', 'POST');
             currentKernelId = response.kernel_id;
             
             status.textContent = 'Running';
@@ -523,7 +523,7 @@
         status.className = 'kernel-status running';
         
         try {
-            await apiRequest(`/kernels/${currentKernelId}`, 'DELETE');
+            await apiRequest(`/api/v1/kernels/${currentKernelId}`, 'DELETE');
             currentKernelId = null;
             
             status.textContent = 'Idle';
