@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPuppyNotebooks 🐶</title>
+    <link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+    <div class="theme-switch-wrapper">
+        <input type="checkbox" id="theme-switch" class="theme-switch" onchange="toggleTheme()">
+        <label for="theme-switch" class="theme-switch-label">
+            <span class="switch-icon">☀️</span>
+            <span class="switch-icon">🌙</span>
+        </label>
+    </div>
+    <div class="header">
+        <h1>iPuppyNotebooks 🐶🚀</h1>
+        <p>Web-based Jupyter-like notebooks with Code Puppy integration! 🐕</p>
+    </div>
+    
+    <div class="notebook-container">
+        <div class="notebook-header">
+            <h2 onclick="editNotebookTitle(this)" class="editable-title">My Awesome Notebook 📓</h2>
+            <button onclick="saveNotebookTitle(this)" style="display: none;">Save Title</button>
+        </div>
+        
+        <div class="cell">
+            <div class="cell-header">
+                <div class="cell-type">Code Cell</div>
+                <div class="cell-actions">
+                    <button onclick="executeCell(this)">Run</button>
+                    <button class="puppy-btn" onclick="editWithPuppy(this)">Edit with Code Puppy</button>
+                </div>
+            </div>
+            <textarea class="cell-content" placeholder="Enter your code here...">console.log('Hello, iPuppyNotebooks!');</textarea>
+            <div class="cell-output"></div>
+        </div>
+        
+        <div class="cell">
+            <div class="cell-header">
+                <div class="cell-type">Markdown Cell</div>
+                <div class="cell-actions">
+                    <button onclick="editCell(this)">Edit</button>
+                </div>
+            </div>
+            <div class="cell-content">## This is a markdown cell
+Welcome to iPuppyNotebooks! This is where you can write documentation and notes.</div>
+        </div>
+        
+        <div class="puppy-panel">
+            <div class="puppy-header">
+                <h3>Code Puppy Assistant 🐶✨</h3>
+                <button onclick="addNewCell()">+ Add New Cell 🚀</button>
+            </div>
+            <div id="puppy-output">
+                <p>Code Puppy is ready to help you edit your notebook cells! 🐾</p>
+                <p>Click "Edit with Code Puppy" on any code cell to get AI assistance. 🚀</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load theme preference on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            const themeSwitch = document.getElementById('theme-switch');
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                themeSwitch.checked = true;
+            } else {
+                themeSwitch.checked = false;
+            }
+        });
+        
+        // Theme toggle functionality
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Basic client-side functionality
+        function executeCell(button) {
+            const cell = button.closest('.cell');
+            const content = cell.querySelector('.cell-content').value || cell.querySelector('.cell-content').innerText;
+            const output = cell.querySelector('.cell-output');
+            
+            // Mock execution - in a real implementation, this would call the backend
+            output.innerHTML = '<p><strong>Output: 🚀</strong></p><pre>' + content + '</pre>';
+        }
+        
+        function editWithPuppy(button) {
+            const cell = button.closest('.cell');
+            const content = cell.querySelector('.cell-content').value || cell.querySelector('.cell-content').innerText;
+            
+            // In a real implementation, this would call the Code Puppy API
+            const puppyOutput = document.getElementById('puppy-output');
+            puppyOutput.innerHTML = '<p><strong>Code Puppy 🐶 is editing your cell... 🐾</strong></p><p>Content sent: 📨 ' + content + '</p>';
+            
+            // Mock response from Code Puppy
+            setTimeout(() => {
+                const editedContent = content + '\n\n// This code was improved by Code Puppy! 🐶✨';
+                cell.querySelector('.cell-content').value = editedContent;
+                puppyOutput.innerHTML = '<p><strong>Code Puppy has finished editing! 🚀</strong></p><p>Suggestions applied to the cell above. 🎯</p>';
+            }, 1500);
+        }
+        
+        function editCell(button) {
+            const cell = button.closest('.cell');
+            const contentDiv = cell.querySelector('.cell-content');
+            const currentContent = contentDiv.innerText;
+            
+            // Replace with textarea for editing
+            contentDiv.outerHTML = '<textarea class="cell-content">' + currentContent + '</textarea>';
+        }
+        
+        function editNotebookTitle(element) {
+            const currentTitle = element.innerText;
+            const saveButton = element.nextElementSibling;
+            
+            // Replace h2 with input field
+            element.outerHTML = `<input type="text" id="title-editor" value="${currentTitle}" class="title-editor" />`;
+            
+            // Show save button
+            saveButton.style.display = 'block';
+            
+            // Focus on the input field
+            const titleEditor = document.getElementById('title-editor');
+            titleEditor.focus();
+            
+            // Add event listener for Enter key
+            titleEditor.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveNotebookTitle(saveButton);
+                }
+            });
+        }
+        
+        function saveNotebookTitle(button) {
+            const titleEditor = document.getElementById('title-editor');
+            if (!titleEditor) return;
+            
+            const newTitle = titleEditor.value;
+            
+            // Replace input with h2
+            titleEditor.outerHTML = `<h2 onclick="editNotebookTitle(this)" class="editable-title">${newTitle}</h2>`;
+            
+            // Hide save button
+            button.style.display = 'none';
+        }
+        
+        function addNewCell() {
+            const container = document.querySelector('.notebook-container');
+            const newCell = document.createElement('div');
+            newCell.className = 'cell';
+            newCell.innerHTML = `
+                <div class="cell-header">
+                    <div class="cell-type">New Code Cell 🚀</div>
+                    <div class="cell-actions">
+                        <button onclick="executeCell(this)">Run</button>
+                        <button class="puppy-btn" onclick="editWithPuppy(this)">Edit with Code Puppy</button>
+                    </div>
+                </div>
+                <textarea class="cell-content" placeholder="Enter your code here... 🐾"></textarea>
+                <div class="cell-output"></div>
+            `;
+            container.insertBefore(newCell, document.querySelector('.puppy-panel'));
+        }
+    </script>
+</body>
+</html>
