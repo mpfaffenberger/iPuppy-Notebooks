@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3" id="sidebar">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Notebooks</h5>
+            </div>
+            <div class="card-body">
+                <div id="file-list">
+                    <!-- File list will be populated here -->
+                </div>
+                <div class="mt-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="new-notebook-name" placeholder="Notebook name">
+                        <button class="btn btn-primary" type="button" id="create-notebook-btn">
+                            <i class="fas fa-plus"></i> Create
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Kernel Status</h5>
+            </div>
+            <div class="card-body">
+                <div id="kernel-status" class="kernel-status idle">
+                    Idle
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-success" id="start-kernel-btn">
+                        <i class="fas fa-play"></i> Start
+                    </button>
+                    <button class="btn btn-sm btn-danger" id="stop-kernel-btn">
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div id="notebook-container">
+            <div class="text-center mt-5">
+                <h3>Welcome to iPuppy Notebooks!</h3>
+                <p class="text-secondary">Select a notebook or create a new one to get started</p>
+                <i class="fas fa-paw fa-3x"></i>
+            </div>
+        </div>
+        
+        <button class="btn btn-success add-cell-btn" id="add-cell-btn" style="display: none;">
+            <i class="fas fa-plus"></i> Add Cell
+        </button>
+    </div>
+</div>
+
+<div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+    <!-- Alerts will be shown here -->
+</div>
+
+<script>
+    // Load notebooks on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadNotebooks();
+        
+        // Set up event listeners
+        document.getElementById('create-notebook-btn').addEventListener('click', createNotebook);
+        document.getElementById('start-kernel-btn').addEventListener('click', startKernel);
+        document.getElementById('stop-kernel-btn').addEventListener('click', stopKernel);
+        document.getElementById('add-cell-btn').addEventListener('click', addCell);
+    });
+    
+    async function loadNotebooks() {
+        try {
+            const response = await apiRequest('/notebooks');
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            response.notebooks.forEach(notebook => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>${notebook}</span>
+                        <div>
+                            <button class="btn btn-sm btn-success me-1" onclick="openNotebook('${notebook}')">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteNotebook('${notebook}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        } catch (error) {
+            console.error('Failed to load notebooks:', error);
+        }
+    }
+    
+    async function createNotebook() {
+        const nameInput = document.getElementById('new-notebook-name');
+        const notebookName = nameInput.value.trim();
+        
+        if (!notebookName) {
+            showAlert('Please enter a notebook name', 'warning');
+            return;
+        }
+        
+        if (!notebookName.endsWith('.ipynb')) {
+            nameInput.value = notebookName + '.ipynb';
+        }
+        
+        try {
+            await apiRequest(`/notebooks/${nameInput.value}`, 'POST');
+            showAlert(`Notebook ${nameInput.value} created successfully`, 'success');
+            nameInput.value = '';
+            await loadNotebooks();
+        } catch (error) {
+            showAlert(`Failed to create notebook: ${error.message}`, 'danger');
+        }
+    }
+    
+    async function deleteNotebook(notebookName) {
+        if (!confirm(`Are you sure you want to delete ${notebookName}?`)) {
+            return;
+        }
+        
+        try {
+            await apiRequest(`/notebooks/${notebookName}`, 'DELETE');
+            showAlert(`Notebook ${notebookName} deleted successfully`, 'success');
+            await loadNotebooks();
+            
+            // If we're currently viewing this notebook, close it
+            const currentNotebook = document.getElementById('current-notebook');
+            if (currentNotebook && currentNotebook.textContent === notebookName) {
+                document.getElementById('notebook-container').innerHTML = `
+                    <div class="text-center mt-5">
+                        <h3>Welcome to iPuppy Notebooks!</h3>
+                        <p class="text-secondary">Select a notebook or create a new one to get started</p>
+                        <i class="fas fa-paw fa-3x"></i>
+                    </div>
+                `;
+                document.getElementById('add-cell-btn').style.display = 'none';
+            }
+        } catch (error) {
+            showAlert(`Failed to delete notebook: ${error.message}`, 'danger');
+        }
+    }
+    
+    async function openNotebook(notebookName) {
+        try {
+            const notebook = await apiRequest(`/notebooks/${notebookName}`);
+            renderNotebook(notebookName, notebook);
+        } catch (error) {
+            showAlert(`Failed to open notebook: ${error.message}`, 'danger');
+        }
+    }
+    
+    function renderNotebook(notebookName, notebook) {
+        const container = document.getElementById('notebook-container');
+        container.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 id="current-notebook">${notebookName}</h3>
+                <button class="btn btn-success" onclick="saveNotebook('${notebookName}')">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+            <div id="cells-container">
+                <!-- Cells will be rendered here -->
+            </div>
+        `;
+        
+        const cellsContainer = document.getElementById('cells-container');
+        notebook.cells.forEach((cell, index) => {
+            cellsContainer.appendChild(createCellElement(cell, index));
+        });
+        
+        // Show the add cell button
+        document.getElementById('add-cell-btn').style.display = 'block';
+    }
+    
+    function createCellElement(cell, index) {
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'notebook-cell card';
+        
+        // Create the cell header
+        const cellHeader = document.createElement('div');
+        cellHeader.className = 'cell-header';
+        
+        // Create select element
+        const select = document.createElement('select');
+        select.className = 'form-select form-select-sm';
+        select.style.width = 'auto';
+        select.innerHTML = `
+            <option value="code" ${cell.cell_type === 'code' ? 'selected' : ''}>Code</option>
+            <option value="markdown" ${cell.cell_type === 'markdown' ? 'selected' : ''}>Markdown</option>
+        `;
+        
+        // Create button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'button-container';
+        
+        // Create execute button
+        const executeBtn = document.createElement('button');
+        executeBtn.className = 'btn btn-sm btn-success execute-btn';
+        executeBtn.innerHTML = '<i class="fas fa-play"></i> Run';
+        executeBtn.onclick = () => executeCell(index);
+        
+        buttonContainer.appendChild(executeBtn);
+        
+        // Create edit button for markdown cells
+        if (cell.cell_type === 'markdown') {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-sm btn-secondary edit-btn ms-1';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+            editBtn.onclick = () => toggleMarkdownEditMode(cellDiv);
+            buttonContainer.appendChild(editBtn);
+        }
+        
+        cellHeader.appendChild(select);
+        cellHeader.appendChild(buttonContainer);
+        
+        // Create the cell content area
+        const cellContent = document.createElement('div');
+        cellContent.className = 'cell-content';
+        
+        if (cell.cell_type === 'markdown') {
+            // For markdown cells, create both edit and view areas
+            // Initially show the rendered view and hide the textarea
+            const markdownContent = cell.source.join('');
+            cellContent.innerHTML = `
+                <textarea class="form-control markdown-edit" rows="5" style="display: none;">${markdownContent}</textarea>
+                <div class="markdown-view">${marked.parse(markdownContent)}</div>
+            `;
+        } else {
+            // For code cells, keep the existing structure
+            cellContent.innerHTML = `
+                <textarea class="form-control" rows="5">${cell.source.join('')}</textarea>
+            `;
+        }
+        
+        // Create the cell output area
+        const cellOutput = document.createElement('div');
+        cellOutput.className = 'cell-output';
+        cellOutput.innerHTML = cell.outputs ? cell.outputs.map(output => formatOutput(output)).join('') : 'No output yet';
+        
+        // Assemble the cell
+        cellDiv.appendChild(cellHeader);
+        cellDiv.appendChild(cellContent);
+        cellDiv.appendChild(cellOutput);
+        
+        return cellDiv;
+    }
+    
+    function formatOutput(output) {
+        if (output.output_type === 'stream') {
+            // text is already a string for stream outputs
+            return output.text || 'No output';
+        } else if (output.output_type === 'execute_result') {
+            // Handle both string and array cases for text/plain data
+            const textData = output.data['text/plain'];
+            if (Array.isArray(textData)) {
+                return textData.join('');
+            } else if (typeof textData === 'string') {
+                return textData;
+            } else {
+                return 'Result';
+            }
+        } else if (output.output_type === 'error') {
+            // Format error messages with better styling
+            // text is already formatted as a string in the executor
+            return `<div class="text-danger">${output.text}</div>`;
+        } else if (output.data && output.data['text/plain']) {
+            // Handle both string and array cases for text/plain data
+            const textData = output.data['text/plain'];
+            if (Array.isArray(textData)) {
+                return textData.join('');
+            } else if (typeof textData === 'string') {
+                return textData;
+            } else {
+                return 'Output';
+            }
+        } else {
+            return 'Output';
+        }
+    }
+    
+    function addCell() {
+        const cellsContainer = document.getElementById('cells-container');
+        if (!cellsContainer) return;
+        
+        const newCell = {
+            cell_type: 'code',
+            source: [],
+            outputs: []
+        };
+        
+        const cellElement = createCellElement(newCell, cellsContainer.children.length);
+        cellsContainer.appendChild(cellElement);
+    }
+    
+    async function executeCell(cellIndex) {
+        const cellsContainer = document.getElementById('cells-container');
+        if (!cellsContainer) return;
+        
+        const cellElement = cellsContainer.children[cellIndex];
+        if (!cellElement) return;
+        
+        const cellType = cellElement.querySelector('select').value;
+        const textarea = cellElement.querySelector('textarea');
+        const outputDiv = cellElement.querySelector('.cell-output');
+        const executeBtn = cellElement.querySelector('.execute-btn');
+        
+        if (!textarea || !outputDiv || !executeBtn) return;
+        
+        const code = textarea.value;
+        if (!code.trim()) {
+            showAlert('Cell is empty', 'warning');
+            return;
+        }
+        
+        // Handle markdown cells differently
+        if (cellType === 'markdown') {
+            const markdownView = cellElement.querySelector('.markdown-view');
+            if (markdownView) {
+                markdownView.innerHTML = marked.parse(code);
+                // Switch to view mode
+                textarea.style.display = 'none';
+                markdownView.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Show loading state for code cells
+        const originalText = executeBtn.innerHTML;
+        executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Running';
+        executeBtn.disabled = true;
+        
+        try {
+            const outputs = await executeCode(code);
+            if (outputs) {
+                outputDiv.innerHTML = outputs.map(output => formatOutput(output)).join('');
+            }
+        } catch (error) {
+            outputDiv.innerHTML = `Error: ${error.message}`;
+        } finally {
+            // Restore button state
+            executeBtn.innerHTML = originalText;
+            executeBtn.disabled = false;
+        }
+    }
+    
+    function toggleMarkdownEditMode(cellElement) {
+        const textarea = cellElement.querySelector('.markdown-edit');
+        const markdownView = cellElement.querySelector('.markdown-view');
+        const editBtn = cellElement.querySelector('.edit-btn');
+        
+        if (!textarea || !markdownView || !editBtn) return;
+        
+        // Toggle between edit and view modes
+        if (textarea.style.display === 'none') {
+            // Switch to edit mode
+            textarea.style.display = 'block';
+            markdownView.style.display = 'none';
+            editBtn.innerHTML = '<i class="fas fa-eye"></i> View';
+        } else {
+            // Switch to view mode - update the rendered markdown
+            markdownView.innerHTML = marked.parse(textarea.value);
+            textarea.style.display = 'none';
+            markdownView.style.display = 'block';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        }
+    }
+    
+    async function saveNotebook(notebookName) {
+        const cellsContainer = document.getElementById('cells-container');
+        if (!cellsContainer) {
+            showAlert('No notebook is currently open', 'warning');
+            return;
+        }
+        
+        // Collect all cells data
+        const cells = [];
+        for (let i = 0; i < cellsContainer.children.length; i++) {
+            const cellElement = cellsContainer.children[i];
+            const textarea = cellElement.querySelector('textarea');
+            const select = cellElement.querySelector('select');
+            
+            if (textarea && select) {
+                cells.push({
+                    cell_type: select.value,
+                    source: textarea.value.split('\n').map(line => line + '\n'),
+                    outputs: []
+                });
+            }
+        }
+        
+        // Create notebook content structure
+        const notebookContent = {
+            cells: cells,
+            metadata: {
+                kernelspec: {
+                    display_name: "Python 3",
+                    language: "python",
+                    name: "python3"
+                },
+                language_info: {
+                    name: "python",
+                    version: "3.9.0"
+                }
+            },
+            nbformat: 4,
+            nbformat_minor: 4
+        };
+        
+        try {
+            await saveNotebookContent(notebookName, notebookContent);
+            showAlert(`Notebook ${notebookName} saved successfully`, 'success');
+        } catch (error) {
+            showAlert(`Failed to save notebook: ${error.message}`, 'danger');
+        }
+    }
+    
+    async function saveNotebookContent(notebookName, content) {
+        // This function will make the API call to save the notebook
+        await apiRequest(`/notebooks/${notebookName}`, 'PUT', content);
+    }
+    
+    async function startKernel() {
+        const status = document.getElementById('kernel-status');
+        status.textContent = 'Starting...';
+        status.className = 'kernel-status running';
+        
+        try {
+            const response = await apiRequest('/kernels', 'POST');
+            currentKernelId = response.kernel_id;
+            
+            status.textContent = 'Running';
+            status.className = 'kernel-status running';
+            
+            showAlert('Kernel started successfully', 'success');
+        } catch (error) {
+            status.textContent = 'Error';
+            status.className = 'kernel-status error';
+            
+            showAlert(`Failed to start kernel: ${error.message}`, 'danger');
+        }
+    }
+    
+    async function stopKernel() {
+        if (!currentKernelId) {
+            showAlert('No kernel is currently running', 'warning');
+            return;
+        }
+        
+        const status = document.getElementById('kernel-status');
+        status.textContent = 'Stopping...';
+        status.className = 'kernel-status running';
+        
+        try {
+            await apiRequest(`/kernels/${currentKernelId}`, 'DELETE');
+            currentKernelId = null;
+            
+            status.textContent = 'Idle';
+            status.className = 'kernel-status idle';
+            
+            showAlert('Kernel stopped successfully', 'info');
+        } catch (error) {
+            status.textContent = 'Error';
+            status.className = 'kernel-status error';
+            
+            showAlert(`Failed to stop kernel: ${error.message}`, 'danger');
+        }
+    }
+</script>
+{% endblock %}

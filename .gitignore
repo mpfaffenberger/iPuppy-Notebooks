@@ -6,3 +6,32 @@ npm-debug.log
 .DS_Store
 dist/
 build/
+
+.puppy_session_memory.json
+
+# Python cache and bytecode
+__pycache__
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+.venv
+venv/
+env/
+
+# Python distribution packages
+*.egg-info/
+
+# JSON files (except for package.json and similar)
+*.json
+!package.json
+
+# IDE files
+.idea/
+
+# OS generated files
+Thumbs.db
+
+# Jupyter notebooks
+*.ipynb
+
