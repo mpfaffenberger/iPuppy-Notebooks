@@ -96,6 +96,57 @@ class CodeExecutor:
             return 'running'
         else:
             return 'stopped'
+    
+    async def get_completions(self, kernel_id: str, code: str, cursor_pos: int) -> list:
+        """Get code completions from the kernel"""
+        kernel_info = kernel_manager.get_kernel_info(kernel_id)
+        if not kernel_info:
+            raise Exception(f"Kernel {kernel_id} not found")
+        
+        # Create a kernel manager and client for completion
+        km = AsyncKernelManager()
+        km.load_connection_info(kernel_info['connection_info'])
+        
+        try:
+            # Create client and start channels
+            kc = km.client()
+            kc.start_channels()
+            
+            # Wait for kernel to be ready
+            await kc.wait_for_ready(timeout=10)
+            
+            # Request completions
+            msg_id = kc.complete(code, cursor_pos)
+            
+            # Wait for completion reply
+            while True:
+                try:
+                    msg = await asyncio.wait_for(kc.get_shell_msg(timeout=1), timeout=10)
+                    
+                    if msg['parent_header'].get('msg_id') == msg_id:
+                        if msg['header']['msg_type'] == 'complete_reply':
+                            content = msg['content']
+                            if content['status'] == 'ok':
+                                matches = content.get('matches', [])
+                                cursor_start = content.get('cursor_start', cursor_pos)
+                                cursor_end = content.get('cursor_end', cursor_pos)
+                                
+                                return {
+                                    'matches': matches,
+                                    'cursor_start': cursor_start,
+                                    'cursor_end': cursor_end,
+                                    'metadata': content.get('metadata', {})
+                                }
+                            else:
+                                return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
+                except asyncio.TimeoutError:
+                    break
+            
+            return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
+        
+        finally:
+            # Cleanup
+            kc.stop_channels()
 
 # Global executor instance
 executor = CodeExecutor()

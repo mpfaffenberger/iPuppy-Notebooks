@@ -123,11 +123,29 @@ async def delete_notebook(notebook_name: str):
     return {"message": f"Notebook {notebook_name} deleted successfully"}
 
 # Kernel Management Routes
+@app.get("/api/v1/kernels")
+async def list_kernels():
+    try:
+        kernels = kernel_manager.list_kernels()
+        return kernels
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/kernels")
 async def start_kernel():
     try:
         kernel_id = await kernel_manager.start_kernel()
         return {"kernel_id": kernel_id, "status": "started"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/kernel/status")
+async def get_global_kernel_status():
+    try:
+        if kernel_manager.is_kernel_alive():
+            return {"kernel_id": kernel_manager.kernel_id, "status": "running"}
+        else:
+            return {"kernel_id": None, "status": "idle"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -159,6 +177,17 @@ async def execute_code(kernel_id: str, code: str = Body(..., embed=True)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Code Completion Route
+@app.post("/api/v1/kernels/{kernel_id}/complete")
+async def complete_code(kernel_id: str, request: dict = Body(...)):
+    try:
+        code = request.get("code", "")
+        cursor_pos = request.get("cursor_pos", len(code))
+        completions = await executor.get_completions(kernel_id, code, cursor_pos)
+        return {"completions": completions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # WebSocket endpoint for real-time kernel communication
 @app.websocket("/api/v1/kernels/{kernel_id}/ws")
 async def websocket_endpoint(websocket: WebSocket, kernel_id: str):
@@ -168,10 +197,13 @@ async def websocket_endpoint(websocket: WebSocket, kernel_id: str):
         while True:
             # Receive message from client
             data = await websocket.receive_json()
+            logger.info(f"WebSocket received message: {data}")
             
             if data.get("type") == "execute_code":
                 cell_index = data.get("cell_index")
                 code = data.get("code")
+                
+                logger.info(f"Executing code in cell {cell_index}: {code[:100]}...")
                 
                 if cell_index is None or code is None:
                     await websocket.send_json({
@@ -191,6 +223,8 @@ async def websocket_endpoint(websocket: WebSocket, kernel_id: str):
 
 async def execute_code_streaming(kernel_id: str, cell_index: int, code: str):
     """Execute code and stream results to WebSocket clients"""
+    logger.info(f"Starting streaming execution for kernel {kernel_id}, cell {cell_index}")
+    
     try:
         # Notify execution started
         await websocket_manager.broadcast_to_kernel(kernel_id, {
@@ -198,6 +232,7 @@ async def execute_code_streaming(kernel_id: str, cell_index: int, code: str):
             "cell_index": cell_index,
             "status": "running"
         })
+        logger.info(f"Sent 'running' status for cell {cell_index}")
         
         # Get kernel info
         kernel_info = kernel_manager.get_kernel_info(kernel_id)
