@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:watch": "tsc -b --watch && vite build --watch",
+    "build:watch": "tsc -b --watch & vite build --watch",
     "lint": "eslint .",
     "preview": "vite preview",
     "preview:watch": "vite preview --host --port 3000",

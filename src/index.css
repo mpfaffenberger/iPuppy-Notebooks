@@ -7,8 +7,10 @@
     @apply bg-base text-content-body;
   }
   
-  body {
-    @apply bg-base text-content-body min-h-screen;
+  html, body {
+    @apply bg-base text-content-body;
+    height: 100%;
+    overflow: hidden;
   }
 }
 
