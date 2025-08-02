@@ -109,7 +109,14 @@ async function executeCode(code) {
     }
 }
 
-async function saveNotebook(notebookName, content) {
+// Renamed to avoid clashing with page-level saveNotebook in index.html
+async function saveNotebookToServer(notebookName, content) {
+    if (!content) {
+        console.error('Attempted to save notebook with no content');
+        showAlert('Error: No content to save.', 'danger');
+        throw new Error('Notebook content is missing');
+    }
+    
     try {
         const response = await apiRequest(`/notebooks/${notebookName}`, 'PUT', content);
         return response;

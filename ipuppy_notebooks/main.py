@@ -1,12 +1,14 @@
 from fastapi import FastAPI, Request, HTTPException, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import logging
 import uvicorn
 import json
 import os
 from pathlib import Path
 from ipuppy_notebooks.kernels.manager import kernel_manager
 from ipuppy_notebooks.kernels.executor import executor
+from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
 
 app = FastAPI(title="iPuppy Notebooks", description="A Jupyter notebook clone with a modern dark mode UI")
 
@@ -14,8 +16,11 @@ templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
 app.mount("/static", StaticFiles(directory="ipuppy_notebooks/static"), name="static")
 
 # Create directories if they don't exist
-os.makedirs("notebooks", exist_ok=True)
 os.makedirs("kernels", exist_ok=True)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @app.get("/")
 async def root(request: Request):
@@ -23,61 +28,48 @@ async def root(request: Request):
 
 @app.get("/notebooks")
 async def list_notebooks():
-    notebooks_dir = Path("notebooks")
-    notebooks = [f.name for f in notebooks_dir.iterdir() if f.is_file() and f.suffix == ".ipynb"]
+    notebooks_dir = Path(".")
+    notebooks = [f.name for f in notebooks_dir.iterdir() if f.is_file() and f.suffix == ".py"]
     return {"notebooks": notebooks}
 
 @app.get("/notebooks/{notebook_name}")
 async def get_notebook(notebook_name: str):
-    notebook_path = Path(f"notebooks/{notebook_name}")
+    # support only .py notebooks for new files
+    notebook_path = Path(f"./{notebook_name}")
     if not notebook_path.exists():
         raise HTTPException(status_code=404, detail="Notebook not found")
-    
-    with open(notebook_path, "r") as f:
-        content = json.load(f)
-    
-    return content
+
+    if notebook_path.suffix == ".py":
+        return load_py_notebook(notebook_path)
+    else:
+        # legacy ipynb
+        with open(notebook_path, "r") as f:
+            return json.load(f)
 
 @app.post("/notebooks/{notebook_name}")
 async def create_notebook(notebook_name: str):
-    notebook_path = Path(f"notebooks/{notebook_name}")
+    # sanitize filename and ensure .py extension only once
+    if not notebook_name.endswith(".py"):
+        notebook_name += ".py"
+    notebook_path = Path(notebook_name)
     if notebook_path.exists():
         raise HTTPException(status_code=400, detail="Notebook already exists")
-    
-    # Create a basic notebook structure with an initial cell
-    notebook_content = {
+
+    initial_notebook = {
         "cells": [
             {
                 "cell_type": "code",
-                "execution_count": None,
-                "metadata": {},
-                "outputs": [],
-                "source": ["# Welcome to iPuppy Notebooks!\n", "# Start coding here\n"]
+                "source": ["print('Welcome to iPuppy Notebooks!')\n"],
+                "outputs": []
             }
-        ],
-        "metadata": {
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3"
-            },
-            "language_info": {
-                "name": "python",
-                "version": "3.9.0"
-            }
-        },
-        "nbformat": 4,
-        "nbformat_minor": 4
+        ]
     }
-    
-    with open(notebook_path, "w") as f:
-        json.dump(notebook_content, f, indent=2)
-    
-    return {"message": f"Notebook {notebook_name} created successfully"}
+    notebook_path.write_text(dump_py_notebook(initial_notebook), encoding="utf-8")
+    return {"message": f"Notebook {notebook_path.name} created successfully"}
 
 @app.delete("/notebooks/{notebook_name}")
 async def delete_notebook(notebook_name: str):
-    notebook_path = Path(f"notebooks/{notebook_name}")
+    notebook_path = Path(f"./{notebook_name}")
     if not notebook_path.exists():
         raise HTTPException(status_code=404, detail="Notebook not found")
     
@@ -123,16 +115,49 @@ async def execute_code(kernel_id: str, code: str = Body(..., embed=True)):
 
 # Notebook Save Route
 @app.put("/notebooks/{notebook_name}")
-async def save_notebook(notebook_name: str, content: dict = Body(...)):
-    notebook_path = Path(f"notebooks/{notebook_name}")
+async def save_notebook(notebook_name: str, request: Request):
+    # Get the raw body first to debug what's being sent
+    body = await request.body()
+    logger.info(f"Received save request for {notebook_name} with body: {body.decode()}")
+    
+    # Early exit if body is empty
+    if not body:
+        logger.error("Empty request body received")
+        raise HTTPException(status_code=400, detail="Request body is empty. Notebook content required.")
+
+    # Parse JSON from the previously-read bytes (reading twice exhausts the stream)
+    try:
+        content = json.loads(body)
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
+    
+    notebook_path = Path(f"./{notebook_name}")
     if not notebook_path.exists():
         raise HTTPException(status_code=404, detail="Notebook not found")
     
+    # Validate required notebook structure
+    required_keys = ["cells", "metadata", "nbformat", "nbformat_minor"]
+    for key in required_keys:
+        if key not in content:
+            logger.error(f"Missing required key in notebook content: {key}")
+            raise HTTPException(status_code=400, detail=f"Missing required key in notebook content: {key}")
+    
+    # Validate cells structure
+    if not isinstance(content["cells"], list):
+        logger.error("Cells must be a list")
+        raise HTTPException(status_code=400, detail="Cells must be a list")
+    
     try:
-        with open(notebook_path, "w") as f:
-            json.dump(content, f, indent=2)
+        if notebook_path.suffix == ".py":
+            notebook_path.write_text(dump_py_notebook(content), encoding="utf-8")
+        else:
+            with open(notebook_path, "w") as f:
+                json.dump(content, f, indent=2)
+        logger.info(f"Notebook {notebook_name} saved successfully")
         return {"message": f"Notebook {notebook_name} saved successfully"}
     except Exception as e:
+        logger.error(f"Error saving notebook: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

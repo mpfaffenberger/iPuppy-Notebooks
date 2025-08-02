@@ -62,6 +62,9 @@
 </div>
 
 <script>
+    // Store references to CodeMirror instances
+    const codeMirrorEditors = [];
+    
     // Load notebooks on page load
     document.addEventListener('DOMContentLoaded', async function() {
         await loadNotebooks();
@@ -111,8 +114,9 @@
             return;
         }
         
-        if (!notebookName.endsWith('.ipynb')) {
-            nameInput.value = notebookName + '.ipynb';
+        // ensure .py extension only once
+        if (!notebookName.endsWith('.py')) {
+            nameInput.value = notebookName + '.py';
         }
         
         try {
@@ -136,8 +140,9 @@
             await loadNotebooks();
             
             // If we're currently viewing this notebook, close it
-            const currentNotebook = document.getElementById('current-notebook');
-            if (currentNotebook && currentNotebook.textContent === notebookName) {
+            const notebookNameSpan = document.getElementById('current-notebook-name');
+            const saveButton = document.getElementById('save-notebook-btn');
+            if (notebookNameSpan && saveButton && notebookNameSpan.textContent === notebookName) {
                 document.getElementById('notebook-container').innerHTML = `
                     <div class="text-center mt-5">
                         <h3>Welcome to iPuppy Notebooks!</h3>
@@ -146,6 +151,11 @@
                     </div>
                 `;
                 document.getElementById('add-cell-btn').style.display = 'none';
+                
+                // Hide the notebook name and save button in the header
+                notebookNameSpan.style.display = 'none';
+                saveButton.style.display = 'none';
+                notebookNameSpan.textContent = '';
             }
         } catch (error) {
             showAlert(`Failed to delete notebook: ${error.message}`, 'danger');
@@ -164,21 +174,34 @@
     function renderNotebook(notebookName, notebook) {
         const container = document.getElementById('notebook-container');
         container.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 id="current-notebook">${notebookName}</h3>
-                <button class="btn btn-success" onclick="saveNotebook('${notebookName}')">
-                    <i class="fas fa-save"></i> Save
-                </button>
-            </div>
             <div id="cells-container">
                 <!-- Cells will be rendered here -->
             </div>
         `;
         
+        // Update the header with the current notebook name and save button
+        const notebookNameSpan = document.getElementById('current-notebook-name');
+        const saveButton = document.getElementById('save-notebook-btn');
+        
+        if (notebookNameSpan && saveButton) {
+            notebookNameSpan.textContent = notebookName;
+            notebookNameSpan.style.display = 'block';
+            saveButton.style.display = 'block';
+            
+            // Remove any existing event listener
+            saveButton.replaceWith(saveButton.cloneNode(true));
+            
+            // Add new event listener
+            document.getElementById('save-notebook-btn').addEventListener('click', () => saveNotebook(notebookName));
+        }
+        
         const cellsContainer = document.getElementById('cells-container');
         notebook.cells.forEach((cell, index) => {
             cellsContainer.appendChild(createCellElement(cell, index));
         });
+        
+        // Initialize CodeMirror for all code cells
+        initializeCodeMirrorEditors();
         
         // Show the add cell button
         document.getElementById('add-cell-btn').style.display = 'block';
@@ -187,6 +210,7 @@
     function createCellElement(cell, index) {
         const cellDiv = document.createElement('div');
         cellDiv.className = 'notebook-cell card';
+        cellDiv.dataset.cellIndex = index;
         
         // Create the cell header
         const cellHeader = document.createElement('div');
@@ -238,9 +262,9 @@
                 <div class="markdown-view">${marked.parse(markdownContent)}</div>
             `;
         } else {
-            // For code cells, keep the existing structure
+            // For code cells, create a textarea that will be converted to CodeMirror
             cellContent.innerHTML = `
-                <textarea class="form-control" rows="5">${cell.source.join('')}</textarea>
+                <textarea class="form-control code-cell" rows="5">${cell.source.join('')}</textarea>
             `;
         }
         
@@ -302,6 +326,11 @@
         
         const cellElement = createCellElement(newCell, cellsContainer.children.length);
         cellsContainer.appendChild(cellElement);
+        
+        // Initialize CodeMirror for the new cell if it's a code cell
+        if (newCell.cell_type === 'code') {
+            initializeCodeMirrorForElement(cellElement);
+        }
     }
     
     async function executeCell(cellIndex) {
@@ -318,7 +347,20 @@
         
         if (!textarea || !outputDiv || !executeBtn) return;
         
-        const code = textarea.value;
+        // Get code from CodeMirror editor if it exists
+        let code = '';
+        if (cellType === 'code') {
+            const cmEditor = cellElement.querySelector('.CodeMirror');
+            if (cmEditor) {
+                const cmInstance = cmEditor.CodeMirror;
+                code = cmInstance.getValue();
+            } else {
+                code = textarea.value;
+            }
+        } else {
+            code = textarea.value;
+        }
+        
         if (!code.trim()) {
             showAlert('Cell is empty', 'warning');
             return;
@@ -347,7 +389,7 @@
                 outputDiv.innerHTML = outputs.map(output => formatOutput(output)).join('');
             }
         } catch (error) {
-            outputDiv.innerHTML = `Error: ${error.message}`;
+            outputDiv.innerHTML = `<div class="text-danger">Error: ${error.message}</div>`;
         } finally {
             // Restore button state
             executeBtn.innerHTML = originalText;
@@ -388,13 +430,31 @@
         const cells = [];
         for (let i = 0; i < cellsContainer.children.length; i++) {
             const cellElement = cellsContainer.children[i];
-            const textarea = cellElement.querySelector('textarea');
             const select = cellElement.querySelector('select');
             
-            if (textarea && select) {
+            if (select) {
+                // Get the CodeMirror editor or textarea depending on cell type
+                let sourceValue = '';
+                if (select.value === 'code') {
+                    // For code cells, get value from CodeMirror editor if it exists
+                    const cmEditor = cellElement.querySelector('.CodeMirror');
+                    if (cmEditor) {
+                        const cmInstance = cmEditor.CodeMirror;
+                        sourceValue = cmInstance.getValue();
+                    } else {
+                        // Fallback to textarea if CodeMirror not initialized
+                        const textarea = cellElement.querySelector('textarea');
+                        sourceValue = textarea ? textarea.value : '';
+                    }
+                } else {
+                    // For markdown cells, get value from textarea
+                    const textarea = cellElement.querySelector('textarea');
+                    sourceValue = textarea ? textarea.value : '';
+                }
+                
                 cells.push({
                     cell_type: select.value,
-                    source: textarea.value.split('\n').map(line => line + '\n'),
+                    source: sourceValue.split('\n').map(line => line + '\n'),
                     outputs: []
                 });
             }
@@ -476,6 +536,46 @@
             
             showAlert(`Failed to stop kernel: ${error.message}`, 'danger');
         }
+    }
+    
+    // Function to initialize CodeMirror editors for all code cells
+    function initializeCodeMirrorEditors() {
+        const cellsContainer = document.getElementById('cells-container');
+        if (!cellsContainer) return;
+        
+        // Find all code cell textareas
+        const codeCellTextareas = cellsContainer.querySelectorAll('.code-cell');
+        
+        codeCellTextareas.forEach((textarea, index) => {
+            const cellElement = textarea.closest('.notebook-cell');
+            initializeCodeMirrorForElement(cellElement);
+        });
+    }
+    
+    // Function to initialize CodeMirror for a specific cell element
+    function initializeCodeMirrorForElement(cellElement) {
+        const textarea = cellElement.querySelector('.code-cell');
+        if (!textarea) return;
+        
+        // Initialize CodeMirror
+        const cm = CodeMirror.fromTextArea(textarea, {
+            mode: 'python',
+            theme: 'dracula',
+            lineNumbers: true,
+            indentUnit: 4,
+            tabSize: 4,
+            indentWithTabs: false,
+            extraKeys: {
+                Tab: function(cm) {
+                    cm.replaceSelection('    ', 'end');
+                    return true;
+                }
+            }
+        });
+        
+        // Store reference to the CodeMirror instance
+        const cellIndex = parseInt(cellElement.dataset.cellIndex);
+        codeMirrorEditors[cellIndex] = cm;
     }
 </script>
 {% endblock %}
