@@ -5,12 +5,13 @@ import logging
 import uvicorn
 import json
 import os
+import asyncio
 from pathlib import Path
 import socketio
 from ipuppy_notebooks.kernels.manager import kernel_manager
 from ipuppy_notebooks.kernels.executor import executor
 from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
-from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code, handle_read_cell_input_response, handle_read_cell_output_response, handle_file_completion_request
+from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code, handle_read_cell_input_response, handle_read_cell_output_response, handle_list_all_cells_response, handle_file_completion_request
 from ipuppy_notebooks.agent.agent import get_data_science_puppy_agent
 
 # Create Socket.IO server
@@ -55,6 +56,10 @@ async def read_cell_input_response(sid, data):
 @sio.event
 async def read_cell_output_response(sid, data):
     await handle_read_cell_output_response(sid, data)
+
+@sio.event
+async def list_all_cells_response(sid, data):
+    await handle_list_all_cells_response(sid, data)
 
 @sio.event
 async def file_completion_request(sid, data):
@@ -188,16 +193,45 @@ async def run_agent(request: dict = Body(...)):
         
         # Note: notebook_sid is now managed via the agent's set_notebook_sid method
         
-        logger.info(f"Running agent with task: {task}")
-        result = await agent.run(task)
+        logger.info(f"Starting agent task in background: {task}")
         
+        # Create a background task to run the agent without blocking
+        async def run_agent_task():
+            try:
+                result = await agent.run(task)
+                
+                # Send the final result via socket.io to all connected clients
+                from ipuppy_notebooks.socket_handlers import socketio_manager
+                await socketio_manager.broadcast("agent_task_completed", {
+                    "success": True,
+                    "output_message": result.output_message,
+                    "awaiting_user_input": result.awaiting_user_input
+                })
+                logger.info(f"Agent task completed successfully")
+                
+            except Exception as e:
+                logger.error(f"Error in background agent task: {e}")
+                # Send error via socket.io
+                from ipuppy_notebooks.socket_handlers import socketio_manager
+                await socketio_manager.broadcast("agent_task_completed", {
+                    "success": False,
+                    "error": str(e),
+                    "output_message": f"Error executing task: {str(e)}",
+                    "awaiting_user_input": False
+                })
+        
+        # Start the task in the background
+        asyncio.create_task(run_agent_task())
+        
+        # Return immediately
         return {
             "success": True,
-            "output_message": result.output_message,
-            "awaiting_user_input": result.awaiting_user_input
+            "message": "Agent task started in background",
+            "status": "running"
         }
+        
     except Exception as e:
-        logger.error(f"Error running agent: {e}")
+        logger.error(f"Error starting agent task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/v1/agent/models")

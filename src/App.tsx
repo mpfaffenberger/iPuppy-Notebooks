@@ -233,9 +233,19 @@ function App() {
       handleReadCellOutputRequest(data, socketInstance);
     });
     
+    socketInstance.on('list_all_cells_request', (data) => {
+      console.log('Socket.IO list_all_cells_request received:', data);
+      handleListAllCellsRequest(data, socketInstance);
+    });
+    
     socketInstance.on('agent_message', (data) => {
       console.log('Socket.IO agent_message received:', data);
       handleAgentMessage(data);
+    });
+    
+    socketInstance.on('agent_task_completed', (data) => {
+      console.log('Socket.IO agent_task_completed received:', data);
+      handleAgentTaskCompleted(data);
     });
     
     socketInstance.on('error', (data) => {
@@ -379,6 +389,20 @@ function App() {
     }
   };
 
+  const handleListAllCellsRequest = (data: any, socket: Socket) => {
+    const { request_id } = data;
+    if (request_id) {
+      // Return all cells with their index, type, source, and outputs
+      const cells = notebookContent.map((cell, index) => ({
+        index,
+        cell_type: cell.cell_type,
+        source: cell.source,
+        outputs: cell.outputs || []
+      }));
+      socket.emit('list_all_cells_response', { request_id, cells });
+    }
+  };
+
   const handleAgentMessage = (data: any) => {
     const { message, timestamp } = data;
     if (message) {
@@ -387,6 +411,25 @@ function App() {
         message: message,
         timestamp: timestamp || Date.now()
       }]);
+    }
+  };
+
+  const handleAgentTaskCompleted = (data: any) => {
+    const { success, output_message, error } = data;
+    
+    // Stop loading state
+    setAgentLoading(false);
+    
+    // Add final message to chat
+    const finalMessage = success ? output_message : (error || 'Agent task failed');
+    setAgentMessages(prev => [...prev, { 
+      role: 'agent', 
+      message: finalMessage,
+      timestamp: Date.now()
+    }]);
+    
+    if (!success) {
+      showAlert('Agent task failed', 'error');
     }
   };
 
@@ -423,21 +466,17 @@ function App() {
       
       const data = await response.json();
       
-      // Add agent response to chat
-      setAgentMessages(prev => [...prev, { 
-        role: 'agent', 
-        message: data.output_message || 'Agent completed the task.',
-        timestamp: Date.now()
-      }]);
+      // The agent now runs in background - we'll get the result via socket.io
+      // The loading state will be cleared by handleAgentTaskCompleted
+      console.log('Agent task started:', data);
       
     } catch (error) {
       console.error('Error calling agent:', error);
       setAgentMessages(prev => [...prev, { 
         role: 'agent', 
-        message: `Error running agent: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Error starting agent: ${error instanceof Error ? error.message : String(error)}`,
         timestamp: Date.now()
       }]);
-    } finally {
       setAgentLoading(false);
     }
   };

@@ -60,13 +60,16 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_add_new_cell(context: RunContext, cell_index: int, cell_type: str = "code", content: str = "") -> Dict[str, Any]:
         """Add a new cell at the specified index."""
+        logger.info(f"agent_add_new_cell called with cell_index={cell_index}, cell_type={cell_type}, content_length={len(content)}")
         try:
+            logger.debug(f"Calling add_new_cell({cell_index}, {cell_type}, {repr(content)})")
             add_new_cell(cell_index, cell_type, content)
             message = f"Added new {cell_type} cell at index {cell_index}"
+            logger.info(f"Successfully added cell: {message}")
             await emit_agent_message(message, "add_new_cell", True)
             return {"success": True, "message": message}
         except Exception as e:
-            logger.error(f"Error in agent_add_new_cell: {e}")
+            logger.error(f"Error in agent_add_new_cell: {e}", exc_info=True)
             error_msg = f"Failed to add cell: {str(e)}"
             await emit_agent_message(error_msg, "add_new_cell", False)
             return {"success": False, "error": str(e)}
@@ -74,13 +77,16 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_delete_cell(context: RunContext, cell_index: int) -> Dict[str, Any]:
         """Delete a cell at the specified index."""
+        logger.info(f"agent_delete_cell called with cell_index={cell_index}")
         try:
+            logger.debug(f"Calling delete_cell({cell_index})")
             delete_cell(cell_index)
             message = f"Deleted cell at index {cell_index}"
+            logger.info(f"Successfully deleted cell: {message}")
             await emit_agent_message(message, "delete_cell", True)
             return {"success": True, "message": message}
         except Exception as e:
-            logger.error(f"Error in agent_delete_cell: {e}")
+            logger.error(f"Error in agent_delete_cell: {e}", exc_info=True)
             error_msg = f"Failed to delete cell: {str(e)}"
             await emit_agent_message(error_msg, "delete_cell", False)
             return {"success": False, "error": str(e)}
@@ -88,13 +94,16 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_alter_cell_content(context: RunContext, cell_index: int, content: str) -> Dict[str, Any]:
         """Alter the content of a cell at the specified index."""
+        logger.info(f"agent_alter_cell_content called with cell_index={cell_index}, content_length={len(content)}")
         try:
+            logger.debug(f"Calling alter_cell_content({cell_index}, {repr(content)})")
             alter_cell_content(cell_index, content)
             message = f"Altered content of cell at index {cell_index}"
+            logger.info(f"Successfully altered cell content: {message}")
             await emit_agent_message(message, "alter_cell_content", True)
             return {"success": True, "message": message}
         except Exception as e:
-            logger.error(f"Error in agent_alter_cell_content: {e}")
+            logger.error(f"Error in agent_alter_cell_content: {e}", exc_info=True)
             error_msg = f"Failed to alter cell content: {str(e)}"
             await emit_agent_message(error_msg, "alter_cell_content", False)
             return {"success": False, "error": str(e)}
@@ -102,13 +111,16 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_execute_cell(context: RunContext, cell_index: int, code: str) -> Dict[str, Any]:
         """Execute a cell at the specified index with the given code."""
+        logger.info(f"agent_execute_cell called with cell_index={cell_index}, code_length={len(code)}")
         try:
+            logger.debug(f"Calling execute_cell({cell_index}, {repr(code)})")
             execute_cell(cell_index, code)
             message = f"Executed cell at index {cell_index}"
+            logger.info(f"Successfully executed cell: {message}")
             await emit_agent_message(message, "execute_cell", True)
             return {"success": True, "message": message}
         except Exception as e:
-            logger.error(f"Error in agent_execute_cell: {e}")
+            logger.error(f"Error in agent_execute_cell: {e}", exc_info=True)
             error_msg = f"Failed to execute cell: {str(e)}"
             await emit_agent_message(error_msg, "execute_cell", False)
             return {"success": False, "error": str(e)}
@@ -116,13 +128,16 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_swap_cell_type(context: RunContext, cell_index: int, new_type: str) -> Dict[str, Any]:
         """Swap a cell between code and markdown types."""
+        logger.info(f"agent_swap_cell_type called with cell_index={cell_index}, new_type={new_type}")
         try:
+            logger.debug(f"Calling swap_cell_type({cell_index}, {new_type})")
             swap_cell_type(cell_index, new_type)
             message = f"Swapped cell at index {cell_index} to {new_type} type"
+            logger.info(f"Successfully swapped cell type: {message}")
             await emit_agent_message(message, "swap_cell_type", True)
             return {"success": True, "message": message}
         except Exception as e:
-            logger.error(f"Error in agent_swap_cell_type: {e}")
+            logger.error(f"Error in agent_swap_cell_type: {e}", exc_info=True)
             error_msg = f"Failed to swap cell type: {str(e)}"
             await emit_agent_message(error_msg, "swap_cell_type", False)
             return {"success": False, "error": str(e)}
@@ -130,13 +145,16 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_move_cell(context: RunContext, cell_index: int, new_index: int) -> Dict[str, Any]:
         """Move a cell from one index to another."""
+        logger.info(f"agent_move_cell called with cell_index={cell_index}, new_index={new_index}")
         try:
+            logger.debug(f"Calling move_cell({cell_index}, {new_index})")
             move_cell(cell_index, new_index)
             message = f"Moved cell from index {cell_index} to {new_index}"
+            logger.info(f"Successfully moved cell: {message}")
             await emit_agent_message(message, "move_cell", True)
             return {"success": True, "message": message}
         except Exception as e:
-            logger.error(f"Error in agent_move_cell: {e}")
+            logger.error(f"Error in agent_move_cell: {e}", exc_info=True)
             error_msg = f"Failed to move cell: {str(e)}"
             await emit_agent_message(error_msg, "move_cell", False)
             return {"success": False, "error": str(e)}
@@ -144,19 +162,25 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_read_cell_input(context: RunContext, cell_index: int) -> Dict[str, Any]:
         """Read the input content of a cell at the specified index."""
+        logger.info(f"agent_read_cell_input called with cell_index={cell_index}")
         notebook_sid = data_science_agent.get_notebook_sid()
+        logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
+        
         if not notebook_sid:
             error_msg = "NOTEBOOK_SID not set"
+            logger.error(f"agent_read_cell_input failed: {error_msg}")
             await emit_agent_message(error_msg, "read_cell_input", False)
             return {"success": False, "error": error_msg}
         
         try:
+            logger.debug(f"Calling read_cell_input({cell_index}, {repr(notebook_sid)})")
             content = read_cell_input(cell_index, notebook_sid)
             message = f"Read content from cell at index {cell_index}"
+            logger.info(f"Successfully read cell input: {message}, content_length={len(content or '')}")
             await emit_agent_message(message, "read_cell_input", True)
             return {"success": True, "content": content or ""}
         except Exception as e:
-            logger.error(f"Error in agent_read_cell_input: {e}")
+            logger.error(f"Error in agent_read_cell_input: {e}", exc_info=True)
             error_msg = f"Failed to read cell input: {str(e)}"
             await emit_agent_message(error_msg, "read_cell_input", False)
             return {"success": False, "error": str(e)}
@@ -164,19 +188,25 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_read_cell_output(context: RunContext, cell_index: int) -> Dict[str, Any]:
         """Read the output content of a cell at the specified index."""
+        logger.info(f"agent_read_cell_output called with cell_index={cell_index}")
         notebook_sid = data_science_agent.get_notebook_sid()
+        logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
+        
         if not notebook_sid:
             error_msg = "NOTEBOOK_SID not set"
+            logger.error(f"agent_read_cell_output failed: {error_msg}")
             await emit_agent_message(error_msg, "read_cell_output", False)
             return {"success": False, "error": error_msg}
         
         try:
+            logger.debug(f"Calling read_cell_output({cell_index}, {repr(notebook_sid)})")
             output = read_cell_output(cell_index, notebook_sid)
             message = f"Read output from cell at index {cell_index}"
+            logger.info(f"Successfully read cell output: {message}, output_length={len(output or [])}")
             await emit_agent_message(message, "read_cell_output", True)
             return {"success": True, "output": output or []}
         except Exception as e:
-            logger.error(f"Error in agent_read_cell_output: {e}")
+            logger.error(f"Error in agent_read_cell_output: {e}", exc_info=True)
             error_msg = f"Failed to read cell output: {str(e)}"
             await emit_agent_message(error_msg, "read_cell_output", False)
             return {"success": False, "error": str(e)}
@@ -184,19 +214,26 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_list_all_cells(context: RunContext) -> Dict[str, Any]:
         """List all cells in the notebook with their types and content."""
+        logger.info(f"agent_list_all_cells called")
         notebook_sid = data_science_agent.get_notebook_sid()
+        logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
+        
         if not notebook_sid:
             error_msg = "NOTEBOOK_SID not set"
+            logger.error(f"agent_list_all_cells failed: {error_msg}")
             await emit_agent_message(error_msg, "list_all_cells", False)
             return {"success": False, "error": error_msg}
         
         try:
+            logger.debug(f"Calling list_all_cells({repr(notebook_sid)})")
             cells = list_all_cells(notebook_sid)
             message = f"Listed all cells in notebook ({len(cells or [])} cells found)"
+            logger.info(f"Successfully listed cells: {message}")
+            logger.debug(f"Cells data: {repr(cells)}")
             await emit_agent_message(message, "list_all_cells", True)
             return {"success": True, "cells": cells or []}
         except Exception as e:
-            logger.error(f"Error in agent_list_all_cells: {e}")
+            logger.error(f"Error in agent_list_all_cells: {e}", exc_info=True)
             error_msg = f"Failed to list cells: {str(e)}"
             await emit_agent_message(error_msg, "list_all_cells", False)
             return {"success": False, "error": str(e)}
@@ -204,14 +241,17 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_share_your_reasoning(context: RunContext, reasoning: str, next_steps: str = None) -> Dict[str, Any]:
         """Share your reasoning and planned next steps."""
+        logger.info(f"agent_share_your_reasoning called with reasoning_length={len(reasoning)}, has_next_steps={next_steps is not None}")
         try:
             message = f"💭 Reasoning: {reasoning}"
             if next_steps:
                 message += f"\n📋 Next steps: {next_steps}"
+                logger.debug(f"Including next steps: {repr(next_steps)}")
+            logger.info(f"Successfully sharing reasoning: {len(message)} characters")
             await emit_agent_message(message, "share_reasoning", True)
             return {"success": True, "message": "Reasoning shared successfully"}
         except Exception as e:
-            logger.error(f"Error in agent_share_your_reasoning: {e}")
+            logger.error(f"Error in agent_share_your_reasoning: {e}", exc_info=True)
             error_msg = f"Failed to share reasoning: {str(e)}"
             await emit_agent_message(error_msg, "share_reasoning", False)
             return {"success": False, "error": str(e)}

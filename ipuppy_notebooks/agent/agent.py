@@ -77,7 +77,7 @@ class DataSciencePuppyAgent:
                 return False
             
             # Create new model instance
-            new_model = ModelFactory.get_model(self.config[model_key], self.config)
+            new_model = ModelFactory.get_model(model_key, self.config)
             
             # Update the agent with new model
             self.model = new_model

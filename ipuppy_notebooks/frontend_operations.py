@@ -161,7 +161,7 @@ def read_cell_input(cell_index: int, sid: str) -> Optional[str]:
         result = asyncio.run(_read_input())
         return result
     except Exception as e:
-        logger.error(f"Error reading cell input at index {cell_index}: {e}")
+        logger.error(f"Error reading cell input at index {cell_index} - Exception type: {type(e).__name__}, Exception value: {repr(e)}", exc_info=True)
         return None
 
 
@@ -208,24 +208,35 @@ def list_all_cells(sid: str) -> Optional[List[Dict[str, Any]]]:
     Returns:
         Optional[List[Dict[str, Any]]]: List of all cells with their properties, or None if failed
     """
+    logger.info(f"list_all_cells called with sid={repr(sid)}")
     data = {}
     
     try:
+        logger.debug("Attempting to get running event loop")
         loop = asyncio.get_running_loop()
+        logger.debug(f"Got running loop: {loop}")
+        
         # Create a task to send the request and wait for response
+        logger.debug("Creating coroutine future for list_all_cells_request")
         future = asyncio.run_coroutine_threadsafe(
             socketio_manager.send_request_to_client("list_all_cells_request", data, sid), 
             loop
         )
+        logger.debug("Waiting for future result with 10s timeout")
         result = future.result(timeout=10.0)
+        logger.info(f"Successfully got list_all_cells result: {type(result)}, length={len(result) if result else 'None'}")
         return result
-    except RuntimeError:
+    except RuntimeError as e:
+        logger.info(f"RuntimeError (no running loop): {e}, creating new event loop")
         # No running loop, create a new one
         async def _list_cells():
+            logger.debug("Inside _list_cells, calling send_request_to_client")
             return await socketio_manager.send_request_to_client("list_all_cells_request", data, sid)
         
+        logger.debug("Running _list_cells with asyncio.run")
         result = asyncio.run(_list_cells())
+        logger.info(f"Successfully got list_all_cells result via new loop: {type(result)}, length={len(result) if result else 'None'}")
         return result
     except Exception as e:
-        logger.error(f"Error listing all cells: {e}")
+        logger.error(f"Error listing all cells - Exception type: {type(e).__name__}, Exception value: {repr(e)}", exc_info=True)
         return None
