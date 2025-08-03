@@ -515,6 +515,12 @@ def get_file_completions(partial_path: str) -> list:
         if not partial_path:
             path_obj = Path('.')
         else:
+            # Expand home directory (~) if present
+            if partial_path.startswith('~/'):
+                partial_path = str(Path.home() / partial_path[2:])
+            elif partial_path == '~':
+                partial_path = str(Path.home())
+            
             # Handle relative paths
             path_obj = Path(partial_path)
         
