@@ -1,5 +1,5 @@
-import { AppBar, Toolbar, Typography, Box, IconButton, Button } from '@mui/material';
-import { Menu, ChevronLeft, BugReport, Save, PlayArrow, Refresh } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography, Box, IconButton, Button, Select, MenuItem, FormControl } from '@mui/material';
+import { Menu, ChevronLeft, BugReport, Save, PlayArrow, Refresh, SmartToy } from '@mui/icons-material';
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
@@ -10,6 +10,9 @@ interface HeaderProps {
   kernelStatus: 'idle' | 'running' | 'error';
   onResetKernel: () => void;
   onEnsureKernel: () => void;
+  availableModels: {[key: string]: string};
+  currentModel: string;
+  onModelChange: (modelKey: string) => void;
 }
 
 export const Header = ({
@@ -20,7 +23,10 @@ export const Header = ({
   onSaveNotebook,
   kernelStatus,
   onResetKernel,
-  onEnsureKernel
+  onEnsureKernel,
+  availableModels,
+  currentModel,
+  onModelChange
 }: HeaderProps) => {
   return (
     <AppBar position="static" color="default">
@@ -88,6 +94,61 @@ export const Header = ({
             >
               reset
             </Button>
+          </Box>
+
+          {/* Model Selector */}
+          <Box display="flex" alignItems="center" gap={1} sx={{ ml: 3 }}>
+            <SmartToy sx={{ color: '#71717a', fontSize: '1rem' }} />
+            <Typography variant="body2" color="text.secondary">model</Typography>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <Select
+                value={currentModel}
+                onChange={(e) => onModelChange(e.target.value)}
+                sx={{
+                  color: '#d4d4d8',
+                  fontSize: '0.75rem',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#3f3f46',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#52525b',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#71717a',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: '#71717a',
+                  },
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      backgroundColor: '#27272a',
+                      border: '1px solid #3f3f46',
+                      '& .MuiMenuItem-root': {
+                        color: '#d4d4d8',
+                        fontSize: '0.75rem',
+                        '&:hover': {
+                          backgroundColor: '#3f3f46',
+                        },
+                        '&.Mui-selected': {
+                          backgroundColor: '#52525b',
+                          '&:hover': {
+                            backgroundColor: '#52525b',
+                          },
+                        },
+                      },
+                    },
+                  },
+                }}
+              >
+                {Object.entries(availableModels).map(([key, name]) => (
+                  <MenuItem key={key} value={key}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
           
           <IconButton

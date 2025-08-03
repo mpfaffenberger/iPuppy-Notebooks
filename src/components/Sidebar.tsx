@@ -9,6 +9,9 @@ interface SidebarProps {
   onCreateNotebook: () => void;
   onOpenNotebook: (name: string) => void;
   onDeleteNotebook: (name: string) => void;
+  agentMessages: Array<{role: 'user' | 'agent', message: string, timestamp: number}>;
+  onSendMessageToAgent: (message: string) => void;
+  agentLoading: boolean;
 }
 
 export const Sidebar = ({
@@ -17,26 +20,27 @@ export const Sidebar = ({
   onNewNotebookNameChange,
   onCreateNotebook,
   onOpenNotebook,
-  onDeleteNotebook
+  onDeleteNotebook,
+  agentMessages,
+  onSendMessageToAgent,
+  agentLoading
 }: SidebarProps) => {
   const [chatInput, setChatInput] = React.useState('');
-  const [chatMessages, setChatMessages] = React.useState<Array<{role: 'user' | 'agent', message: string}>>([
-    { role: 'agent', message: 'Woof! I\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!' }
-  ]);
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [agentMessages]);
 
   const handleSendMessage = () => {
     if (!chatInput.trim()) return;
     
-    setChatMessages(prev => [...prev, { role: 'user', message: chatInput }]);
+    onSendMessageToAgent(chatInput);
     setChatInput('');
-    
-    // Simulate agent response (replace with actual agent integration later)
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { 
-        role: 'agent', 
-        message: 'Woof! I received your message. This is where the AI agent will respond!' 
-      }]);
-    }, 1000);
   };
 
   return (
@@ -130,7 +134,7 @@ export const Sidebar = ({
           gap: 1,
           maxHeight: 'calc(100% - 120px)'
         }}>
-          {chatMessages.map((msg, idx) => (
+          {agentMessages.map((msg, idx) => (
             <Box
               key={idx}
               sx={{
@@ -148,6 +152,7 @@ export const Sidebar = ({
               </Typography>
             </Box>
           ))}
+          <div ref={messagesEndRef} />
         </Box>
         
         {/* Chat Input */}
@@ -188,9 +193,9 @@ export const Sidebar = ({
                     <IconButton 
                       size="small" 
                       onClick={handleSendMessage}
-                      disabled={!chatInput.trim()}
+                      disabled={!chatInput.trim() || agentLoading}
                       sx={{ 
-                        color: chatInput.trim() ? '#d4d4d8' : '#71717a',
+                        color: (chatInput.trim() && !agentLoading) ? '#d4d4d8' : '#71717a',
                         '&:hover': { color: '#d4d4d8' }
                       }}
                     >

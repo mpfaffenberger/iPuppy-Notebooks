@@ -11,6 +11,7 @@ from ipuppy_notebooks.kernels.manager import kernel_manager
 from ipuppy_notebooks.kernels.executor import executor
 from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
 from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code, handle_read_cell_input_response, handle_read_cell_output_response, handle_file_completion_request
+from ipuppy_notebooks.agent.agent import get_data_science_puppy_agent
 
 # Create Socket.IO server
 sio = socketio.AsyncServer(
@@ -31,6 +32,8 @@ os.makedirs("kernels", exist_ok=True)
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+agent = get_data_science_puppy_agent()
 
 # Socket.IO event handlers
 @sio.event
@@ -173,6 +176,63 @@ async def complete_code(request: dict = Body(...)):
         completions = await executor.get_completions(kernel_id, code, cursor_pos)
         return {"completions": completions}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Agent Routes
+@app.post("/api/v1/agent/run")
+async def run_agent(request: dict = Body(...)):
+    try:
+        task = request.get("task", "")
+        if not task.strip():
+            raise HTTPException(status_code=400, detail="Task cannot be empty")
+        
+        # Set the NOTEBOOK_SID environment variable for tools to use
+        # You might want to get this from the request or session
+        sid = request.get("sid", "")
+        if sid:
+            os.environ["NOTEBOOK_SID"] = sid
+        
+        logger.info(f"Running agent with task: {task}")
+        result = await agent.run(task)
+        
+        return {
+            "success": True,
+            "output_message": result.output_message,
+            "awaiting_user_input": result.awaiting_user_input
+        }
+    except Exception as e:
+        logger.error(f"Error running agent: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/agent/models")
+async def get_agent_models():
+    """Get all available models for the agent."""
+    try:
+        models = agent.get_available_models()
+        current_model = agent.get_current_model()
+        return {
+            "models": models,
+            "current_model": current_model
+        }
+    except Exception as e:
+        logger.error(f"Error getting agent models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/agent/models/{model_key}")
+async def set_agent_model(model_key: str):
+    """Set the active model for the agent."""
+    try:
+        success = agent.set_model(model_key)
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully switched to model: {model_key}",
+                "current_model": agent.get_current_model()
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"Failed to switch to model: {model_key}")
+    except Exception as e:
+        logger.error(f"Error setting agent model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Socket.IO is now handling real-time communication - no WebSocket endpoint needed

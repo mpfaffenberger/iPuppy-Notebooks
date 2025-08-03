@@ -124,6 +124,12 @@ function App() {
   const [editingMarkdownCells, setEditingMarkdownCells] = useState<Set<number>>(new Set());
   const [debugModalOpen, setDebugModalOpen] = useState<boolean>(false);
   const [autoSaveEnabled] = useState<boolean>(false);
+  const [agentMessages, setAgentMessages] = useState<Array<{role: 'user' | 'agent', message: string, timestamp: number}>>([
+    { role: 'agent', message: 'Woof! I\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!', timestamp: Date.now() }
+  ]);
+  const [agentLoading, setAgentLoading] = useState<boolean>(false);
+  const [availableModels, setAvailableModels] = useState<{[key: string]: string}>({});
+  const [currentModel, setCurrentModel] = useState<string>('');
   
   // Use ref to avoid stale closure issues
   const socketRef = useRef<Socket | null>(null);
@@ -133,6 +139,7 @@ function App() {
     loadNotebooks();
     checkKernelStatus();
     connectSocket();
+    loadModels();
     
     // Cleanup on unmount
     return () => {
@@ -224,6 +231,11 @@ function App() {
     socketInstance.on('read_cell_output_request', (data) => {
       console.log('Socket.IO read_cell_output_request received:', data);
       handleReadCellOutputRequest(data, socketInstance);
+    });
+    
+    socketInstance.on('agent_message', (data) => {
+      console.log('Socket.IO agent_message received:', data);
+      handleAgentMessage(data);
     });
     
     socketInstance.on('error', (data) => {
@@ -364,6 +376,67 @@ function App() {
       } else {
         socket.emit('read_cell_output_response', { request_id, outputs: [] });
       }
+    }
+  };
+
+  const handleAgentMessage = (data: any) => {
+    const { message, timestamp } = data;
+    if (message) {
+      setAgentMessages(prev => [...prev, { 
+        role: 'agent', 
+        message: message,
+        timestamp: timestamp || Date.now()
+      }]);
+    }
+  };
+
+  const sendMessageToAgent = async (message: string) => {
+    // Add user message to chat
+    setAgentMessages(prev => [...prev, { 
+      role: 'user', 
+      message: message,
+      timestamp: Date.now()
+    }]);
+    
+    setAgentLoading(true);
+    
+    try {
+      // Get the current socket ID
+      const currentSocket = socketRef.current;
+      const socketId = currentSocket?.id || '';
+      
+      // Call the agent API
+      const response = await fetch('/api/v1/agent/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          task: message,
+          sid: socketId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Agent API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Add agent response to chat
+      setAgentMessages(prev => [...prev, { 
+        role: 'agent', 
+        message: data.output_message || 'Agent completed the task.',
+        timestamp: Date.now()
+      }]);
+      
+    } catch (error) {
+      console.error('Error calling agent:', error);
+      setAgentMessages(prev => [...prev, { 
+        role: 'agent', 
+        message: `Error running agent: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: Date.now()
+      }]);
+    } finally {
+      setAgentLoading(false);
     }
   };
 
@@ -558,6 +631,37 @@ function App() {
       console.error(error);
       setKernelStatus('error');
       showAlert('Failed to ensure kernel', 'error');
+    }
+  };
+
+  // Model functions
+  const loadModels = async () => {
+    try {
+      const response = await fetch('/api/v1/agent/models');
+      if (!response.ok) throw new Error(`Failed to load models: ${response.status}`);
+      const data = await response.json();
+      setAvailableModels(data.models);
+      setCurrentModel(data.current_model);
+      console.log('Loaded models:', data);
+    } catch (error) {
+      console.error('Failed to load models:', error);
+      showAlert('Failed to load agent models', 'error');
+    }
+  };
+
+  const handleModelChange = async (modelKey: string) => {
+    try {
+      const response = await fetch(`/api/v1/agent/models/${modelKey}`, {
+        method: 'POST'
+      });
+      if (!response.ok) throw new Error(`Failed to change model: ${response.status}`);
+      const data = await response.json();
+      setCurrentModel(data.current_model);
+      showAlert(`Switched to model: ${availableModels[modelKey]}`, 'success');
+      console.log('Model changed:', data);
+    } catch (error) {
+      console.error('Failed to change model:', error);
+      showAlert('Failed to change agent model', 'error');
     }
   };
 
@@ -772,6 +876,9 @@ function App() {
         kernelStatus={kernelStatus}
         onResetKernel={resetKernel}
         onEnsureKernel={ensureKernel}
+        availableModels={availableModels}
+        currentModel={currentModel}
+        onModelChange={handleModelChange}
       />
 
       <Container maxWidth={false} sx={{ mt: 4, mb: 8 }}>
@@ -784,6 +891,9 @@ function App() {
               onCreateNotebook={createNotebook}
               onOpenNotebook={openNotebook}
               onDeleteNotebook={deleteNotebook}
+              agentMessages={agentMessages}
+              onSendMessageToAgent={sendMessageToAgent}
+              agentLoading={agentLoading}
             />
           )}
 

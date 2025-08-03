@@ -1,24 +1,33 @@
 """
 Data Science Puppy agent - main module.
 """
+import sys
+
 import pathlib
 
 import os
 import logging
-from typing import Optional
 
 import pydantic
 from pydantic_ai import Agent
 
-from code_puppy.model_factory import ModelFactory
 from ipuppy_notebooks.agent.prompts import get_system_prompt
 from ipuppy_notebooks.agent.tools import register_data_science_tools
 
 logger = logging.getLogger(__name__)
-MODELS_JSON_PATH = os.environ.get("MODELS_JSON_PATH", None)
-if MODELS_JSON_PATH is None:
-    MODELS_JSON_PATH = pathlib.Path(ModelFactory.__file__).parent / "models.json"
-config = ModelFactory.load_config(MODELS_JSON_PATH)
+
+# Try to import ModelFactory, but fall back to direct model creation if not available
+try:
+    from code_puppy.model_factory import ModelFactory
+    MODELS_JSON_PATH = os.environ.get("MODELS_JSON_PATH", None)
+    if MODELS_JSON_PATH is None:
+        # Try to find the models.json file relative to the module
+        import code_puppy.model_factory
+        MODELS_JSON_PATH = pathlib.Path(code_puppy.model_factory.__file__).parent / "models.json"
+    USE_MODEL_FACTORY = True
+except ImportError:
+    USE_MODEL_FACTORY = False
+    logger.warning("code_puppy.model_factory not available")
 
 
 class AgentResponse(pydantic.BaseModel):
@@ -38,9 +47,15 @@ class DataSciencePuppyAgent:
     def __init__(self):
 
         # Load model
-        config = ModelFactory.load_config()
-        self.model = ModelFactory.get_model(self.model_name, config)
-        
+        try:
+            self.config = ModelFactory.load_config(MODELS_JSON_PATH)
+            # Get the first available model as default
+            self.current_model_key = list(self.config.keys())[0]
+            self.model = ModelFactory.get_model(self.config[self.current_model_key], self.config)
+        except Exception as e:
+            logger.warning(f"Failed to load model via ModelFactory: {e}")
+            sys.exit(1)
+
         # Create agent
         self.agent = Agent(
             model=self.model,
@@ -51,7 +66,48 @@ class DataSciencePuppyAgent:
         
         # Register tools
         register_data_science_tools(self.agent)
+
+    def set_model(self, model_key: str) -> bool:
+        """Set the active model by key from the configuration."""
+        try:
+            if model_key not in self.config:
+                logger.error(f"Model key '{model_key}' not found in configuration. Available keys: {list(self.config.keys())}")
+                return False
+            
+            # Create new model instance
+            new_model = ModelFactory.get_model(self.config[model_key], self.config)
+            
+            # Update the agent with new model
+            self.model = new_model
+            self.current_model_key = model_key
+            
+            # Create a new agent instance with the new model
+            # (pydantic_ai doesn't support model swapping on existing agents)
+            self.agent = Agent(
+                model=self.model,
+                instructions=get_system_prompt(),
+                output_type=AgentResponse,
+                retries=3,
+            )
+            
+            # Re-register tools on the new agent
+            register_data_science_tools(self.agent)
+            
+            logger.info(f"Successfully switched to model: {model_key}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to switch to model '{model_key}': {e}")
+            return False
+
+    def get_available_models(self) -> dict:
+        """Get all available models from the configuration."""
+        return {key: config.get('name', key) for key, config in self.config.items()}
     
+    def get_current_model(self) -> str:
+        """Get the currently active model key."""
+        return self.current_model_key
+
     async def run(self, task: str) -> AgentResponse:
         """Run a data science task with the agent."""
         try:
