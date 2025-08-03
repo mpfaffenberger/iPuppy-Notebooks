@@ -10,13 +10,9 @@ function isInsideString(state: any, pos: number): boolean {
   const tree = syntaxTree(state);
   const node = tree.resolveInner(pos, -1);
   
-  console.log('🐕 Checking if inside string, node type:', node.type.name);
-  
   let currentNode: any = node;
   while (currentNode) {
-    console.log('🐕 Traversing node:', currentNode.type.name);
     if (currentNode.type.name === 'String') {
-      console.log('🐕 Found String node!');
       return true;
     }
     currentNode = currentNode.parent;
@@ -94,37 +90,27 @@ function shouldTriggerPythonCompletion(state: any, pos: number): boolean {
 export function customTabHandler(): KeyBinding {
   return {
     key: 'Tab',
+    preventDefault: false,
     run: (view) => {
-      console.log('🐕 Custom tab handler called!');
       const state = view.state;
       const pos = state.selection.main.head;
       
-      // Get some context for debugging
-      const doc = state.doc;
-      const currentLine = doc.lineAt(pos);
-      const beforeCursor = currentLine.text.slice(0, pos - currentLine.from);
-      console.log('🐕 Tab context:', { pos, beforeCursor, lineText: currentLine.text });
-      
       // If inside a string, trigger file path autocompletion
       if (isInsideString(state, pos)) {
-        console.log('🐕 Inside string - triggering completion');
         return startCompletion(view);
       }
       
       // If after a dot, trigger Python object member completion
       if (isAfterDot(state, pos)) {
-        console.log('🐕 After dot - triggering completion');
         return startCompletion(view);
       }
       
       // If in a context where Python completion would be helpful, trigger it
       if (shouldTriggerPythonCompletion(state, pos)) {
-        console.log('🐕 Python completion context - triggering completion');
         return startCompletion(view);
       }
       
       // Otherwise, perform indentation
-      console.log('🐕 No completion context - performing indentation');
       return indentMore(view);
     }
   };

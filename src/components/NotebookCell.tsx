@@ -138,9 +138,46 @@ export const NotebookCell = ({
   const [isContentExpanded, setIsContentExpanded] = React.useState(true);
   const [isOutputExpanded, setIsOutputExpanded] = React.useState(true);
   
-  // Debug: log when component mounts
+  // Store reference to CodeMirror view for tab handling
+  const codeMirrorViewRef = React.useRef<any>(null);
+  
+
+  // Intercept Tab before CodeMirror can preventDefault it
   React.useEffect(() => {
-    console.log('🐕 NotebookCell mounted for index:', index, 'cell_type:', cell.cell_type);
+    const tabInterceptor = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+        const target = event.target as HTMLElement;
+        // Only intercept if we're in a CodeMirror content area
+        if (target && target.closest('.cm-content')) {
+          event.stopPropagation();
+          event.preventDefault();
+          
+          // Check if this tab is for our cell and use stored view reference
+          const cellElement = target.closest('[data-cell-index]');
+          if (cellElement) {
+            const cellIndex = parseInt(cellElement.getAttribute('data-cell-index') || '0');
+            
+            // Only handle if this is our cell
+            if (cellIndex === index && codeMirrorViewRef.current) {
+              const view = codeMirrorViewRef.current;
+              
+              // Call our custom tab handler directly
+              import('../lib/tabHandler').then(({ customTabHandler }) => {
+                const handler = customTabHandler();
+                handler.run!(view);
+              });
+            }
+          }
+        }
+      }
+    };
+    
+    // Use capture phase to get Tab before CodeMirror
+    document.addEventListener('keydown', tabInterceptor, true);
+    
+    return () => {
+      document.removeEventListener('keydown', tabInterceptor, true);
+    };
   }, []);
   
   // Use useEffect to add global event listener for this cell
@@ -384,14 +421,10 @@ export const NotebookCell = ({
             ]}
             theme={refinedTheme}
             onChange={(val) => onUpdateCell(index, { source: [val] })}
-            basicSetup={{
-              lineNumbers: true,
-              foldGutter: true,
-              dropCursor: false,
-              allowMultipleSelections: false,
-              defaultKeymap: false,  // Disable default keymap to prevent conflicts
-              tabSize: 2,
+            onCreateEditor={(view) => {
+              codeMirrorViewRef.current = view;
             }}
+            basicSetup={false}
             style={{
               fontSize: '14px',
               fontWeight: '300',
