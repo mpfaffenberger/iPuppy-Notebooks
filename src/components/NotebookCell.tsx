@@ -7,6 +7,8 @@ import { createTheme } from '@uiw/codemirror-themes';
 import { tags } from '@lezer/highlight';
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
+import { filePathCompletion } from '../lib/fileCompletion';
+import { customTabHandler } from '../lib/tabHandler';
 import { marked } from 'marked';
 import type { NotebookCell as CellType, NotebookCellOutput } from './types';
 
@@ -25,6 +27,7 @@ interface NotebookCellProps {
   canMoveUp: boolean;
   canMoveDown: boolean;
   pythonCompletion: any; // Type from CodeMirror
+  socket: any; // Socket.IO instance
   cleanAnsiCodes: (text: string) => string;
 }
 
@@ -120,8 +123,8 @@ export const NotebookCell = ({
   cleanAnsiCodes
 }: NotebookCellProps) => {
   
-  const [isContentExpanded, setIsContentExpanded] = React.useState(false);
-  const [isOutputExpanded, setIsOutputExpanded] = React.useState(false);
+  const [isContentExpanded, setIsContentExpanded] = React.useState(true);
+  const [isOutputExpanded, setIsOutputExpanded] = React.useState(true);
   
   // Use useEffect to add global event listener for this cell
   React.useEffect(() => {
@@ -167,14 +170,22 @@ export const NotebookCell = ({
       sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}
     >
       {/* Cell header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, backgroundColor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, px: 1, backgroundColor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
         <Select
           size="small"
           value={cell.cell_type}
           onChange={(e) =>
             onUpdateCell(index, { cell_type: e.target.value as 'code' | 'markdown' })
           }
-          sx={{ width: 120 }}
+          sx={{ 
+            width: 120,
+            height: '28px',
+            fontSize: '0.75rem',
+            '& .MuiSelect-select': {
+              py: 0.25,
+              minHeight: 'unset'
+            }
+          }}
         >
           <MenuItem value="code">Code</MenuItem>
           <MenuItem value="markdown">Markdown</MenuItem>
@@ -187,7 +198,10 @@ export const NotebookCell = ({
             backgroundColor: '#3f3f46', 
             '&:hover': { backgroundColor: '#52525b' }, 
             '&:disabled': { backgroundColor: '#27272a', color: '#71717a' },
-            color: '#d4d4d8'
+            color: '#d4d4d8',
+            fontSize: '0.75rem',
+            py: 0.25,
+            px: 1
           }} 
           startIcon={<PlayArrow />} 
           onClick={() => {
@@ -214,7 +228,9 @@ export const NotebookCell = ({
               '&:hover': { backgroundColor: '#52525b' },
               color: '#d4d4d8',
               minWidth: 'auto',
-              px: 1
+              px: 1,
+              py: 0.25,
+              fontSize: '0.75rem'
             }}
             onClick={() => setIsContentExpanded(!isContentExpanded)}
             title={isContentExpanded ? "Collapse content" : "Expand content"}
@@ -237,7 +253,9 @@ export const NotebookCell = ({
               '&:disabled': { backgroundColor: '#27272a', color: '#71717a' },
               color: '#d4d4d8',
               minWidth: 'auto',
-              px: 1
+              px: 1,
+              py: 0.25,
+              fontSize: '0.75rem'
             }}
             onClick={() => onMoveCellUp(index)}
           >
@@ -253,7 +271,9 @@ export const NotebookCell = ({
               '&:disabled': { backgroundColor: '#27272a', color: '#71717a' },
               color: '#d4d4d8',
               minWidth: 'auto',
-              px: 1
+              px: 1,
+              py: 0.25,
+              fontSize: '0.75rem'
             }}
             onClick={() => onMoveCellDown(index)}
           >
@@ -267,7 +287,10 @@ export const NotebookCell = ({
           sx={{ 
             backgroundColor: '#3f3f46', 
             '&:hover': { backgroundColor: '#52525b' }, 
-            color: '#d4d4d8'
+            color: '#d4d4d8',
+            fontSize: '0.75rem',
+            py: 0.25,
+            px: 1
           }} 
           startIcon={<Delete />} 
           onClick={() => onDeleteCell(index)}
@@ -329,8 +352,15 @@ export const NotebookCell = ({
             height={isContentExpanded ? "auto" : "200px"}
             extensions={[
               python(),
-              autocompletion({ override: [pythonCompletion] }),
-              keymap.of(completionKeymap)
+              autocompletion({ override: [pythonCompletion, (context) => {
+                // Use socket from props scope, but add a check to prevent errors
+                if (!socket) {
+                  console.warn('Socket not available for file completion');
+                  return null;
+                }
+                return filePathCompletion(context, socket);
+              }] }),
+              keymap.of([customTabHandler(), ...completionKeymap])
             ]}
             theme={refinedTheme}
             onChange={(val) => onUpdateCell(index, { source: [val] })}
@@ -371,7 +401,9 @@ export const NotebookCell = ({
                 '&:hover': { backgroundColor: '#52525b' },
                 color: '#d4d4d8',
                 minWidth: 'auto',
-                px: 1
+                px: 1,
+                py: 0.25,
+                fontSize: '0.75rem'
               }}
               onClick={() => setIsOutputExpanded(!isOutputExpanded)}
               title={isOutputExpanded ? "Collapse output" : "Expand output"}

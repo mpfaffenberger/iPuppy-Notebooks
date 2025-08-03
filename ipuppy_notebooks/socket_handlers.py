@@ -479,3 +479,89 @@ async def handle_read_cell_output_response(sid, data):
         socketio_manager.handle_client_response(sid, request_id, outputs)
     else:
         logger.warning("Received read_cell_output_response without request_id")
+
+async def handle_file_completion_request(sid, data):
+    """Handle file path completion request from frontend."""
+    try:
+        partial_path = data.get('partial_path', '')
+        request_id = data.get('request_id')
+        
+        if not request_id:
+            logger.warning("Received file_completion_request without request_id")
+            return
+        
+        # Get completions for the partial path
+        completions = get_file_completions(partial_path)
+        
+        # Send response back to client
+        from ipuppy_notebooks.main import sio
+        await sio.emit('file_completion_response', {
+            'request_id': request_id,
+            'completions': completions
+        }, room=sid)
+        logger.info(f"Sent file completion response for request {request_id}")
+        
+    except Exception as e:
+        logger.error(f"Error in file completion request handler: {e}")
+        from ipuppy_notebooks.main import sio
+        await sio.emit('error', {
+            'message': f'File completion error: {str(e)}'
+        }, room=sid)
+
+def get_file_completions(partial_path: str) -> list:
+    """Get file completions for a partial path."""
+    try:
+        # If partial_path is empty, list files in current directory
+        if not partial_path:
+            path_obj = Path('.')
+        else:
+            # Handle relative paths
+            path_obj = Path(partial_path)
+        
+        # If the path ends with a separator, we're looking for contents of a directory
+        if partial_path.endswith('/') or partial_path.endswith('\\'):
+            search_dir = path_obj if path_obj.is_absolute() else Path.cwd() / path_obj
+            if not search_dir.exists() or not search_dir.is_dir():
+                return []
+        else:
+            # If not, we're looking for files/dirs that match the partial name
+            search_dir = path_obj.parent if path_obj.parent else Path('.')
+            search_dir = search_dir if search_dir.is_absolute() else Path.cwd() / search_dir
+            partial_name = path_obj.name
+            
+            if not search_dir.exists() or not search_dir.is_dir():
+                return []
+        
+        # Get all items in the directory
+        items = list(search_dir.iterdir())
+        
+        # Filter items based on partial name if we're not looking for directory contents
+        if not (partial_path.endswith('/') or partial_path.endswith('\\')) and partial_name:
+            items = [item for item in items if item.name.startswith(partial_name)]
+        
+        # Format completions as relative paths from current directory
+        completions = []
+        cwd = Path.cwd()
+        
+        for item in items:
+            try:
+                # Get relative path from current directory
+                rel_path = item.relative_to(cwd)
+                
+                # Add trailing slash for directories
+                if item.is_dir():
+                    completions.append(str(rel_path) + '/')
+                else:
+                    completions.append(str(rel_path))
+            except ValueError:
+                # If item is not relative to cwd, just use its name
+                if item.is_dir():
+                    completions.append(item.name + '/')
+                else:
+                    completions.append(item.name)
+        
+        return completions
+    
+    except Exception as e:
+        logger.error(f"Error getting file completions: {e}")
+        return []

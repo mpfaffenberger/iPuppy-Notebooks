@@ -17,6 +17,7 @@
   "license": "ISC",
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.11.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^5.15.18",

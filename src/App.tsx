@@ -773,6 +773,7 @@ function App() {
               onMoveCellDown={handleMoveCellDown}
               onFocusNextCell={handleFocusNextCell}
               pythonCompletion={pythonCompletion}
+              socket={socket}
               cleanAnsiCodes={cleanAnsiCodes}
             />
           </Box>

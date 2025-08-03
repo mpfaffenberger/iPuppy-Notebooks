@@ -10,7 +10,7 @@ import socketio
 from ipuppy_notebooks.kernels.manager import kernel_manager
 from ipuppy_notebooks.kernels.executor import executor
 from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
-from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code
+from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code, handle_read_cell_input_response, handle_read_cell_output_response, handle_file_completion_request
 
 # Create Socket.IO server
 sio = socketio.AsyncServer(
@@ -44,6 +44,18 @@ async def disconnect(sid):
 @sio.event
 async def execute_code(sid, data):
     await handle_execute_code(sid, data)
+
+@sio.event
+async def read_cell_input_response(sid, data):
+    await handle_read_cell_input_response(sid, data)
+
+@sio.event
+async def read_cell_output_response(sid, data):
+    await handle_read_cell_output_response(sid, data)
+
+@sio.event
+async def file_completion_request(sid, data):
+    await handle_file_completion_request(sid, data)
 
 # Application startup and shutdown events
 @app.on_event("startup")
