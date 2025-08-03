@@ -10,7 +10,6 @@ import { keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
 import { searchKeymap } from '@codemirror/search';
 import { filePathCompletion } from '../lib/fileCompletion';
-import { customTabHandler } from '../lib/tabHandler';
 import { marked } from 'marked';
 import type { NotebookCell as CellType, NotebookCellOutput } from './types';
 
