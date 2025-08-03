@@ -5,8 +5,19 @@ import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { createTheme } from '@uiw/codemirror-themes';
 import { tags } from '@lezer/highlight';
-import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
+import { autocompletion } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
+
+// Test keymap to debug
+const testKeymap = keymap.of([
+  {
+    key: 'Ctrl-Space',
+    run: () => {
+      console.log('🐕 Test keymap works! Ctrl-Space pressed');
+      return true;
+    }
+  }
+]);
 import { filePathCompletion } from '../lib/fileCompletion';
 import { customTabHandler } from '../lib/tabHandler';
 import { marked } from 'marked';
@@ -126,6 +137,11 @@ export const NotebookCell = ({
   
   const [isContentExpanded, setIsContentExpanded] = React.useState(true);
   const [isOutputExpanded, setIsOutputExpanded] = React.useState(true);
+  
+  // Debug: log when component mounts
+  React.useEffect(() => {
+    console.log('🐕 NotebookCell mounted for index:', index, 'cell_type:', cell.cell_type);
+  }, []);
   
   // Use useEffect to add global event listener for this cell
   React.useEffect(() => {
@@ -361,7 +377,10 @@ export const NotebookCell = ({
                 }
                 return filePathCompletion(context, socket);
               }] }),
-              keymap.of([customTabHandler(), ...completionKeymap])
+              // Test keymap to verify keymaps work
+              testKeymap,
+              // ONLY our custom tab handler - no other keymaps for now
+              keymap.of([customTabHandler()])
             ]}
             theme={refinedTheme}
             onChange={(val) => onUpdateCell(index, { source: [val] })}
@@ -370,6 +389,8 @@ export const NotebookCell = ({
               foldGutter: true,
               dropCursor: false,
               allowMultipleSelections: false,
+              defaultKeymap: false,  // Disable default keymap to prevent conflicts
+              tabSize: 2,
             }}
             style={{
               fontSize: '14px',

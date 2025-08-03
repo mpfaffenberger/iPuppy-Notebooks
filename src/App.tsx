@@ -573,8 +573,14 @@ function App() {
   };
 
   const pythonCompletion = async (context: CompletionContext) => {
-    const word = context.matchBefore(/\w*$/);
-    if (!word || (word.from === word.to && !context.explicit)) return null;
+    // Enhanced matching to capture more completion contexts
+    const wordMatch = context.matchBefore(/[\w.]*$/);
+    
+    // Allow completions in more contexts: after dots, partial words, or when explicit
+    if (!wordMatch && !context.explicit) return null;
+    
+    // If we have a word match but it's empty and not explicit, skip
+    if (wordMatch && wordMatch.from === wordMatch.to && !context.explicit) return null;
 
     try {
       const code = context.state.doc.toString();
@@ -593,12 +599,35 @@ function App() {
       
       if (!completions.matches || completions.matches.length === 0) return null;
       
+      // Determine completion type based on context
+      const getCompletionType = (match: string) => {
+        // Check if it looks like a function (ends with parentheses in the match or common function patterns)
+        if (match.includes('(') || /^[a-z_]\w*$/.test(match)) {
+          return 'function';
+        }
+        // Check if it looks like a class (starts with uppercase)
+        if (/^[A-Z]/.test(match)) {
+          return 'class';
+        }
+        // Check if it looks like a constant (all uppercase)
+        if (/^[A-Z_]+$/.test(match)) {
+          return 'constant';
+        }
+        // Check if it looks like a module or package
+        if (match.includes('.') && !match.includes('(')) {
+          return 'module';
+        }
+        // Default to variable
+        return 'variable';
+      };
+      
       return {
         from: completions.cursor_start,
         to: completions.cursor_end,
         options: completions.matches.map((match: string) => ({
           label: match,
-          type: 'function'
+          type: getCompletionType(match),
+          detail: getCompletionType(match) === 'function' ? 'function' : undefined
         }))
       };
     } catch (error) {

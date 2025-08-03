@@ -10,9 +10,13 @@ function isInsideString(state: any, pos: number): boolean {
   const tree = syntaxTree(state);
   const node = tree.resolveInner(pos, -1);
   
+  console.log('🐕 Checking if inside string, node type:', node.type.name);
+  
   let currentNode: any = node;
   while (currentNode) {
+    console.log('🐕 Traversing node:', currentNode.type.name);
     if (currentNode.type.name === 'String') {
+      console.log('🐕 Found String node!');
       return true;
     }
     currentNode = currentNode.parent;
@@ -23,14 +27,62 @@ function isInsideString(state: any, pos: number): boolean {
 
 /**
  * Check if cursor is after a dot (for object member completion)
+ * Also handles cases where there might be partial text after the dot
  */
 function isAfterDot(state: any, pos: number): boolean {
   const doc = state.doc;
   
-  // Look at the character before the cursor
-  if (pos > 0) {
-    const charBefore = doc.sliceString(pos - 1, pos);
-    return charBefore === '.';
+  // Look backwards to find a dot that could be for member access
+  let searchPos = pos - 1;
+  
+  // Skip over any identifier characters (letters, digits, underscore)
+  while (searchPos >= 0) {
+    const char = doc.sliceString(searchPos, searchPos + 1);
+    if (/[a-zA-Z0-9_]/.test(char)) {
+      searchPos--;
+      continue;
+    } else if (char === '.') {
+      // Found a dot! Check that it's preceded by a valid identifier
+      if (searchPos > 0) {
+        const beforeDot = doc.sliceString(searchPos - 1, searchPos);
+        // The dot should be preceded by an identifier character or closing bracket/paren
+        return /[a-zA-Z0-9_)\]]/.test(beforeDot);
+      }
+      return false;
+    } else {
+      // Hit a non-identifier, non-dot character
+      break;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if cursor is in a position where Python completions would be helpful
+ * (e.g., at start of identifier, after keywords, etc.)
+ */
+function shouldTriggerPythonCompletion(state: any, pos: number): boolean {
+  const doc = state.doc;
+  
+  // Check if we're in the middle of typing an identifier
+  const currentLine = doc.lineAt(pos);
+  const lineText = currentLine.text;
+  const posInLine = pos - currentLine.from;
+  
+  // Get text before cursor on current line
+  const beforeCursor = lineText.slice(0, posInLine);
+  
+  // If there's an identifier character right before the cursor, we might want completion
+  if (posInLine > 0 && /[a-zA-Z0-9_]/.test(beforeCursor[beforeCursor.length - 1])) {
+    // Make sure we're not in a string
+    return !isInsideString(state, pos);
+  }
+  
+  // If we're after certain keywords or operators, trigger completion
+  const keywordPattern = /\b(import|from|class|def|if|elif|else|for|while|with|as|return|yield|except|raise|assert|global|nonlocal)\s+$/;
+  if (keywordPattern.test(beforeCursor)) {
+    return true;
   }
   
   return false;
@@ -43,20 +95,36 @@ export function customTabHandler(): KeyBinding {
   return {
     key: 'Tab',
     run: (view) => {
+      console.log('🐕 Custom tab handler called!');
       const state = view.state;
       const pos = state.selection.main.head;
       
-      // If inside a string, trigger autocompletion
+      // Get some context for debugging
+      const doc = state.doc;
+      const currentLine = doc.lineAt(pos);
+      const beforeCursor = currentLine.text.slice(0, pos - currentLine.from);
+      console.log('🐕 Tab context:', { pos, beforeCursor, lineText: currentLine.text });
+      
+      // If inside a string, trigger file path autocompletion
       if (isInsideString(state, pos)) {
+        console.log('🐕 Inside string - triggering completion');
         return startCompletion(view);
       }
       
-      // If after a dot, trigger autocompletion
+      // If after a dot, trigger Python object member completion
       if (isAfterDot(state, pos)) {
+        console.log('🐕 After dot - triggering completion');
+        return startCompletion(view);
+      }
+      
+      // If in a context where Python completion would be helpful, trigger it
+      if (shouldTriggerPythonCompletion(state, pos)) {
+        console.log('🐕 Python completion context - triggering completion');
         return startCompletion(view);
       }
       
       // Otherwise, perform indentation
+      console.log('🐕 No completion context - performing indentation');
       return indentMore(view);
     }
   };
