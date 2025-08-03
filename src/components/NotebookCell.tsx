@@ -8,7 +8,7 @@ import { tags } from '@lezer/highlight';
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
 import { marked } from 'marked';
-import type { NotebookCell as CellType } from './types';
+import type { NotebookCell as CellType, NotebookCellOutput } from './types';
 
 interface NotebookCellProps {
   cell: CellType;
@@ -56,6 +56,51 @@ const refinedTheme = createTheme({
     { tag: tags.propertyName, color: '#60a5fa', fontWeight: '300' }, // soft blue
   ],
 });
+
+const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput; cleanAnsiCodes: (text: string) => string }) => {
+  // Handle string outputs directly
+  if (typeof output === 'string') {
+    return <div>{cleanAnsiCodes(output)}</div>;
+  }
+
+  // Handle display_data with HTML content
+  if (output.output_type === 'display_data' && output.data && 'text/html' in output.data) {
+    // For HTML content, render using dangerouslySetInnerHTML
+    return (
+      <div 
+        dangerouslySetInnerHTML={{ __html: output.data['text/html'] }}
+        style={{
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.875rem',
+          overflow: 'auto'
+        }}
+      />
+    );
+  }
+
+  // Handle execute_result with HTML content
+  if (output.output_type === 'execute_result' && output.data && 'text/html' in output.data) {
+    // For HTML content, render using dangerouslySetInnerHTML
+    return (
+      <div 
+        dangerouslySetInnerHTML={{ __html: output.data['text/html'] }}
+        style={{
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.875rem',
+          overflow: 'auto'
+        }}
+      />
+    );
+  }
+
+  // Handle other object outputs with text property
+  if (output && typeof output === 'object' && 'text' in output && (output as any).text) {
+    return <div>{cleanAnsiCodes((output as any).text)}</div>;
+  }
+
+  // Fallback to JSON.stringify for other object types
+  return <div>{JSON.stringify(output, null, 2)}</div>;
+};
 
 export const NotebookCell = ({
   cell,
@@ -347,21 +392,10 @@ export const NotebookCell = ({
             {cell.outputs?.length ? (
               Array.isArray(cell.outputs) ? (
                 cell.outputs.map((output, i) => (
-                  <div key={i}>
-                    {typeof output === 'string' 
-                      ? cleanAnsiCodes(output)
-                      : (output && typeof output === 'object' && 'text' in output 
-                          ? cleanAnsiCodes((output as any).text)
-                          : JSON.stringify(output, null, 2))
-                    }
-                  </div>
+                  <OutputRenderer key={i} output={output} cleanAnsiCodes={cleanAnsiCodes} />
                 ))
               ) : (
-                typeof cell.outputs === 'string' 
-                  ? cleanAnsiCodes(cell.outputs)
-                  : (cell.outputs && typeof cell.outputs === 'object' && 'text' in cell.outputs 
-                      ? cleanAnsiCodes((cell.outputs as any).text)
-                      : JSON.stringify(cell.outputs, null, 2))
+                <OutputRenderer output={cell.outputs} cleanAnsiCodes={cleanAnsiCodes} />
               )
             ) : isExecuting ? (
               <Typography color="text.secondary" fontStyle="italic">waiting for output...</Typography>

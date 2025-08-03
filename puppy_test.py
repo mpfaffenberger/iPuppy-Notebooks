@@ -1,19 +1,7 @@
-# %% [markdown]
-# Welcome to iPuppy Notebooks!!!
-
-### Agentic AI Coding for Data Science!
-
-- This is a markdown list item
-- So is this
-
-1. This is numbered list
-2. So is this
 # %%
-print('Welcome to iPuppy Notebooks!')
-
-# %% [markdown]
-# Backend Operations Test
-# This cell tests the new backend functions that trigger frontend operations
+import pandas as pd
+df = pd.read_csv("~/Downloads/people-100000.csv")
+df.head()
 # %%
 # Test imports
 try:
