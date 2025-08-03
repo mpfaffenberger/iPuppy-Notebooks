@@ -110,9 +110,9 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_execute_cell(context: RunContext, cell_index: int = 0, code: str = "") -> Dict[str, Any]:
-        """Execute a cell at the specified index with the given code and return the execution outputs."""
-        logger.info(f"agent_execute_cell called with cell_index={cell_index}, code_length={len(code)}")
+    async def agent_execute_cell(context: RunContext, cell_index: int = 0) -> Dict[str, Any]:
+        """Execute the cell at the specified index with its existing content."""
+        logger.info(f"agent_execute_cell called with cell_index={cell_index}")
         notebook_sid = data_science_agent.get_notebook_sid()
         logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
         
@@ -123,10 +123,26 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": error_msg}
         
         try:
-            logger.debug(f"Calling execute_cell_and_wait({cell_index}, {repr(code)}, {repr(notebook_sid)})")
+            # First read the existing cell content
+            logger.debug(f"Reading existing content for cell {cell_index}")
+            cell_content = await read_cell_input(cell_index, notebook_sid)
+            
+            if cell_content is None:
+                error_msg = f"Could not read content from cell {cell_index}"
+                logger.error(error_msg)
+                await emit_agent_message(error_msg, "execute_cell", False)
+                return {"success": False, "error": error_msg}
+            
+            if not cell_content.strip():
+                error_msg = f"Cell {cell_index} is empty - nothing to execute"
+                logger.warning(error_msg)
+                await emit_agent_message(error_msg, "execute_cell", False)
+                return {"success": False, "error": error_msg}
+            
+            logger.debug(f"Executing cell {cell_index} with existing content (length: {len(cell_content)})")
             await emit_agent_message(f"Executing cell {cell_index}...", "execute_cell", True)
             
-            outputs = await execute_cell_and_wait(cell_index, code, notebook_sid, timeout=30.0)
+            outputs = await execute_cell_and_wait(cell_index, cell_content, notebook_sid, timeout=30.0)
             
             if outputs is not None:
                 message = f"Executed cell {cell_index} successfully with {len(outputs)} outputs"

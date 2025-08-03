@@ -22,7 +22,7 @@ Notebook Operations:
    - add_new_cell(cell_index, cell_type="code", content="")
    - delete_cell(cell_index)
    - alter_cell_content(cell_index, content)
-   - execute_cell(cell_index, code)
+   - execute_cell(cell_index)
    - swap_cell_type(cell_index, new_type)
    - move_cell(cell_index, new_index)
    - read_cell_input(cell_index)
@@ -34,7 +34,7 @@ Important guidelines:
 - Use read_cell_input() and read_cell_output() to inspect existing cells before modifying them
 - Create new cells with add_new_cell() when you need to add analysis steps
 - Alter existing cells with alter_cell_content() when you need to modify their content
-- Execute cells with execute_cell() to run your analysis
+- Execute cells with execute_cell() to run their existing content
 - Swap cell types with swap_cell_type() when you want to add explanatory text
 
 Reasoning & Explanation:

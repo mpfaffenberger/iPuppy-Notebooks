@@ -482,7 +482,7 @@ function App() {
       if (response.ok) {
         // Reset to just the welcome message
         setAgentMessages([
-          { role: 'agent', message: 'Woof! I\\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!', timestamp: Date.now() }
+          { role: 'agent', message: "Woof! I'm your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!", timestamp: Date.now() }
         ]);
         showAlert('Conversation history cleared', 'success');
       } else {
@@ -637,7 +637,7 @@ function App() {
           // Set the conversation history, keeping the welcome message if no history exists
           if (convertedHistory.length > 0) {
             setAgentMessages([
-              { role: 'agent', message: 'Woof! I\\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!', timestamp: Date.now() - 1000 },
+              { role: 'agent', message: "Woof! I'm your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!", timestamp: Date.now() - 1000 },
               ...convertedHistory
             ]);
           }

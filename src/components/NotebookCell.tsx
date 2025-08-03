@@ -12,6 +12,38 @@ import { searchKeymap } from '@codemirror/search';
 import { marked } from 'marked';
 import type { NotebookCell as CellType, NotebookCellOutput } from './types';
 
+// Component to handle Plotly HTML rendering with proper timing
+const PlotlyHtmlRenderer = ({ html, style }: { html: string; style: React.CSSProperties }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (containerRef.current) {
+      // Set the HTML content
+      containerRef.current.innerHTML = html;
+      
+      // Execute any scripts after a small delay to ensure DOM is ready
+      setTimeout(() => {
+        const scripts = containerRef.current?.getElementsByTagName('script');
+        if (scripts) {
+          for (let i = 0; i < scripts.length; i++) {
+            const script = scripts[i];
+            const newScript = document.createElement('script');
+            if (script.src) {
+              newScript.src = script.src;
+            } else {
+              newScript.textContent = script.textContent;
+            }
+            document.head.appendChild(newScript);
+            document.head.removeChild(newScript);
+          }
+        }
+      }, 100);
+    }
+  }, [html]);
+
+  return <div ref={containerRef} style={style} />;
+};
+
 interface NotebookCellProps {
   cell: CellType;
   index: number;
@@ -69,8 +101,8 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
   if (output.output_type === 'display_data' && output.data && 'text/html' in output.data) {
     // For HTML content, render using dangerouslySetInnerHTML
     return (
-      <div 
-        dangerouslySetInnerHTML={{ __html: output.data['text/html'] }}
+      <PlotlyHtmlRenderer 
+        html={output.data['text/html']}
         style={{
           fontFamily: '"JetBrains Mono", monospace',
           fontSize: '0.875rem',
@@ -84,8 +116,8 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
   if (output.output_type === 'execute_result' && output.data && 'text/html' in output.data) {
     // For HTML content, render using dangerouslySetInnerHTML
     return (
-      <div 
-        dangerouslySetInnerHTML={{ __html: output.data['text/html'] }}
+      <PlotlyHtmlRenderer 
+        html={output.data['text/html']}
         style={{
           fontFamily: '"JetBrains Mono", monospace',
           fontSize: '0.875rem',
@@ -95,20 +127,217 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
     );
   }
 
-  // Handle Plotly JSON outputs
-  if (output.output_type === 'display_data' && output.data && 'application/vnd.plotly.v1+json' in output.data) {
-    const plotlyData = output.data['application/vnd.plotly.v1+json'];
-    return (
-      <div 
-        id={`plotly-div-${Math.random().toString(36).substr(2, 9)}`}
-        ref={(el) => {
-          if (el && (window as any).Plotly) {
-            (window as any).Plotly.newPlot(el, plotlyData.data, plotlyData.layout, plotlyData.config);
-          }
-        }}
-        style={{ width: '100%', height: '400px' }}
-      />
-    );
+
+  // Handle outputs with data property (display_data and execute_result)
+  if (output.output_type === 'display_data' || output.output_type === 'execute_result') {
+    const outputData = output.data;
+    
+    // Handle image outputs (PNG, JPEG, GIF)
+    for (const mimeType of ['image/png', 'image/jpeg', 'image/gif']) {
+      if (mimeType in outputData) {
+        const imageData = outputData[mimeType];
+        const src = typeof imageData === 'string' && imageData.startsWith('data:') 
+          ? imageData 
+          : `data:${mimeType};base64,${imageData}`;
+        return (
+          <img 
+            src={src}
+            alt="Output"
+            style={{ 
+              maxWidth: '100%', 
+              height: 'auto',
+              border: '1px solid #3f3f46',
+              borderRadius: '4px'
+            }}
+          />
+        );
+      }
+    }
+
+    // Handle SVG images
+    if ('image/svg+xml' in outputData) {
+      const svgData = outputData['image/svg+xml'];
+      return (
+        <div 
+          dangerouslySetInnerHTML={{ __html: svgData }}
+          style={{
+            maxWidth: '100%',
+            overflow: 'auto',
+            border: '1px solid #3f3f46',
+            borderRadius: '4px',
+            padding: '8px'
+          }}
+        />
+      );
+    }
+
+    // Handle text/plain
+    if ('text/plain' in outputData) {
+      return (
+        <pre style={{ 
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.875rem',
+          color: '#d4d4d8',
+          margin: 0,
+          whiteSpace: 'pre-wrap'
+        }}>
+          {cleanAnsiCodes(outputData['text/plain'])}
+        </pre>
+      );
+    }
+
+    // Handle text/markdown
+    if ('text/markdown' in outputData) {
+      return (
+        <div 
+          dangerouslySetInnerHTML={{ __html: marked(outputData['text/markdown']) }}
+          style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.875rem',
+            color: '#d4d4d8',
+            lineHeight: '1.6'
+          }}
+        />
+      );
+    }
+
+    // Handle LaTeX/math
+    if ('text/latex' in outputData) {
+      return (
+        <div style={{
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.875rem',
+          color: '#d4d4d8',
+          padding: '8px',
+          border: '1px solid #3f3f46',
+          borderRadius: '4px',
+          backgroundColor: '#27272a'
+        }}>
+          <code>LaTeX: {outputData['text/latex']}</code>
+        </div>
+      );
+    }
+
+    // Handle JSON data
+    if ('application/json' in outputData) {
+      const jsonData = typeof outputData['application/json'] === 'string' 
+        ? outputData['application/json']
+        : JSON.stringify(outputData['application/json'], null, 2);
+      return (
+        <pre style={{ 
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.875rem',
+          color: '#d4d4d8',
+          margin: 0,
+          whiteSpace: 'pre-wrap',
+          backgroundColor: '#27272a',
+          padding: '8px',
+          border: '1px solid #3f3f46',
+          borderRadius: '4px',
+          overflow: 'auto'
+        }}>
+          {jsonData}
+        </pre>
+      );
+    }
+
+    // Handle CSV data
+    if ('text/csv' in outputData) {
+      return (
+        <pre style={{ 
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '0.875rem',
+          color: '#d4d4d8',
+          margin: 0,
+          whiteSpace: 'pre-wrap',
+          backgroundColor: '#27272a',
+          padding: '8px',
+          border: '1px solid #3f3f46',
+          borderRadius: '4px',
+          overflow: 'auto'
+        }}>
+          {outputData['text/csv']}
+        </pre>
+      );
+    }
+
+    // Handle video files
+    for (const videoType of ['video/mp4', 'video/webm', 'video/ogg']) {
+      if (videoType in outputData) {
+        const videoData = outputData[videoType];
+        const src = typeof videoData === 'string' && videoData.startsWith('data:') 
+          ? videoData 
+          : `data:${videoType};base64,${videoData}`;
+        return (
+          <video 
+            controls
+            style={{ 
+              maxWidth: '100%', 
+              height: 'auto',
+              border: '1px solid #3f3f46',
+              borderRadius: '4px'
+            }}
+          >
+            <source src={src} type={videoType} />
+            Your browser does not support the video tag.
+          </video>
+        );
+      }
+    }
+
+    // Handle audio files
+    for (const audioType of ['audio/wav', 'audio/mp3', 'audio/ogg']) {
+      if (audioType in outputData) {
+        const audioData = outputData[audioType];
+        const src = typeof audioData === 'string' && audioData.startsWith('data:') 
+          ? audioData 
+          : `data:${audioType};base64,${audioData}`;
+        return (
+          <audio 
+            controls
+            style={{ 
+              width: '100%',
+              border: '1px solid #3f3f46',
+              borderRadius: '4px'
+            }}
+          >
+            <source src={src} type={audioType} />
+            Your browser does not support the audio tag.
+          </audio>
+        );
+      }
+    }
+
+    // Handle JavaScript execution
+    if ('application/javascript' in outputData) {
+      return (
+        <div>
+          <div style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.75rem',
+            color: '#71717a',
+            marginBottom: '8px',
+            fontStyle: 'italic'
+          }}>
+            JavaScript output (not executed for security):
+          </div>
+          <pre style={{ 
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.875rem',
+            color: '#d4d4d8',
+            margin: 0,
+            whiteSpace: 'pre-wrap',
+            backgroundColor: '#27272a',
+            padding: '8px',
+            border: '1px solid #3f3f46',
+            borderRadius: '4px',
+            overflow: 'auto'
+          }}>
+            {outputData['application/javascript']}
+          </pre>
+        </div>
+      );
+    }
   }
 
   // Handle other object outputs with text property

@@ -80,6 +80,9 @@ class KernelManager:
                 "connection_info": connection_info
             }
             
+            # Initialize kernel with notebook-friendly settings
+            await self._initialize_kernel_for_notebook()
+            
             logger.info(f"Started global kernel: {self.kernel_id}")
             return self.kernel_id
         except Exception as e:
@@ -90,6 +93,89 @@ class KernelManager:
                 except:
                     pass
             raise Exception(f"Failed to start kernel: {str(e)}")
+    
+    async def _initialize_kernel_for_notebook(self):
+        """Initialize the kernel with notebook-friendly settings"""
+        try:
+            from jupyter_client import AsyncKernelManager
+            
+            # Create kernel manager and client
+            km = AsyncKernelManager()
+            km.load_connection_info(self.global_kernel['connection_info'])
+            kc = km.client()
+            kc.start_channels()
+            
+            # Wait for kernel to be ready
+            await kc.wait_for_ready(timeout=30)
+            
+            # Execute initialization code
+            init_code = """
+# Configure matplotlib for inline plotting in Jupyter
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+
+# Import IPython display system
+from IPython import get_ipython
+from IPython.display import display
+
+# Enable inline matplotlib backend if IPython is available
+ipython = get_ipython()
+if ipython is not None:
+    ipython.run_line_magic('matplotlib', 'inline')
+
+# Configure seaborn 
+try:
+    import seaborn as sns
+    sns.set_theme()
+except ImportError:
+    pass
+
+# Configure plotly for Jupyter notebook output
+try:
+    import plotly.io as pio
+    import plotly.offline as pyo
+    
+    # Initialize notebook mode (connected=True since we have CDN loaded)
+    pyo.init_notebook_mode(connected=True)
+    
+    # Use standard notebook renderer
+    pio.renderers.default = "notebook"
+    
+except ImportError:
+    pass
+
+print("Kernel initialized for inline plotting")
+"""
+            
+            # Execute the initialization code
+            msg_id = kc.execute(init_code, silent=True)
+            
+            # Wait for execution to complete
+            execution_timeout = 10
+            start_time = asyncio.get_event_loop().time()
+            
+            while True:
+                try:
+                    msg = await asyncio.wait_for(kc.get_iopub_msg(timeout=1), timeout=2)
+                    if (msg['parent_header'].get('msg_id') == msg_id and 
+                        msg['header']['msg_type'] == 'status' and 
+                        msg['content']['execution_state'] == 'idle'):
+                        break
+                except asyncio.TimeoutError:
+                    if asyncio.get_event_loop().time() - start_time > execution_timeout:
+                        logger.warning("Kernel initialization timed out")
+                        break
+            
+            logger.info("Kernel initialized with notebook display settings")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize kernel for notebook: {e}")
+        finally:
+            try:
+                kc.stop_channels()
+            except:
+                pass
     
     def is_kernel_alive(self) -> bool:
         """Check if the global kernel is still alive"""
