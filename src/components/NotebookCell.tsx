@@ -122,7 +122,7 @@ export const NotebookCell = ({
       sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}
     >
       {/* Cell header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, backgroundColor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, backgroundColor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
         <Select
           size="small"
           value={cell.cell_type}
