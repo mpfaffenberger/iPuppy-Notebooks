@@ -13,6 +13,7 @@ dependencies = [
     "aiofiles>=0.7.0",
     "websockets>=10.0",
     "python-socketio>=5.13.0",
+    "code-puppy>=0.0.77",
 ]
 
 [build-system]

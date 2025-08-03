@@ -5,7 +5,7 @@ These functions send events via Socket.IO to trigger actions in the frontend.
 
 import asyncio
 import logging
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 
 from .socket_handlers import socketio_manager, execute_code_streaming
 
@@ -196,4 +196,36 @@ def read_cell_output(cell_index: int, sid: str) -> Optional[List[Any]]:
         return result
     except Exception as e:
         logger.error(f"Error reading cell output at index {cell_index}: {e}")
+        return None
+
+def list_all_cells(sid: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    List all cells in the notebook with their types and content.
+    
+    Args:
+        sid (str): The Socket.IO session ID of the client to request from
+        
+    Returns:
+        Optional[List[Dict[str, Any]]]: List of all cells with their properties, or None if failed
+    """
+    data = {}
+    
+    try:
+        loop = asyncio.get_running_loop()
+        # Create a task to send the request and wait for response
+        future = asyncio.run_coroutine_threadsafe(
+            socketio_manager.send_request_to_client("list_all_cells_request", data, sid), 
+            loop
+        )
+        result = future.result(timeout=10.0)
+        return result
+    except RuntimeError:
+        # No running loop, create a new one
+        async def _list_cells():
+            return await socketio_manager.send_request_to_client("list_all_cells_request", data, sid)
+        
+        result = asyncio.run(_list_cells())
+        return result
+    except Exception as e:
+        logger.error(f"Error listing all cells: {e}")
         return None

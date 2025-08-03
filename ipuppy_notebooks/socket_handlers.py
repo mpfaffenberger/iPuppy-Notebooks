@@ -480,6 +480,15 @@ async def handle_read_cell_output_response(sid, data):
     else:
         logger.warning("Received read_cell_output_response without request_id")
 
+async def handle_list_all_cells_response(sid, data):
+    """Handle response from frontend for list_all_cells request."""
+    request_id = data.get('request_id')
+    cells = data.get('cells', [])
+    if request_id:
+        socketio_manager.handle_client_response(sid, request_id, cells)
+    else:
+        logger.warning("Received list_all_cells_response without request_id")
+
 async def handle_file_completion_request(sid, data):
     """Handle file path completion request from frontend."""
     try:
