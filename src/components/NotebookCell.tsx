@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Select, MenuItem, Button, Typography } from '@mui/material';
-import { PlayArrow, Delete, KeyboardArrowUp, KeyboardArrowDown } from '@mui/icons-material';
+import { PlayArrow, Delete, KeyboardArrowUp, KeyboardArrowDown, UnfoldMore, UnfoldLess } from '@mui/icons-material';
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { createTheme } from '@uiw/codemirror-themes';
@@ -74,6 +74,9 @@ export const NotebookCell = ({
   pythonCompletion,
   cleanAnsiCodes
 }: NotebookCellProps) => {
+  
+  const [isContentExpanded, setIsContentExpanded] = React.useState(false);
+  const [isOutputExpanded, setIsOutputExpanded] = React.useState(false);
   
   // Use useEffect to add global event listener for this cell
   React.useEffect(() => {
@@ -155,6 +158,24 @@ export const NotebookCell = ({
             : (isExecuting ? 'running...' : '🚀 run')
           }
         </Button>
+        
+        {/* Content expand toggle */}
+        <Button
+          size="small"
+          variant="contained"
+          sx={{
+            backgroundColor: '#3f3f46',
+            '&:hover': { backgroundColor: '#52525b' },
+            color: '#d4d4d8',
+            minWidth: 'auto',
+            px: 1
+          }}
+          onClick={() => setIsContentExpanded(!isContentExpanded)}
+          title={isContentExpanded ? "Collapse content" : "Expand content"}
+        >
+          {isContentExpanded ? <UnfoldLess fontSize="small" /> : <UnfoldMore fontSize="small" />}
+        </Button>
+        
         <Box sx={{ flex: 1 }} />
         
         {/* Move buttons */}
@@ -215,7 +236,9 @@ export const NotebookCell = ({
             <textarea
               style={{ 
                 width: '100%', 
-                minHeight: 120, 
+                height: isContentExpanded ? 'auto' : '120px',
+                minHeight: isContentExpanded ? '400px' : '120px',
+                maxHeight: isContentExpanded ? 'none' : '120px',
                 background: '#18181b', 
                 color: '#d4d4d8', 
                 padding: 16,
@@ -223,7 +246,7 @@ export const NotebookCell = ({
                 outline: 'none',
                 fontFamily: '"JetBrains Mono", monospace',
                 fontSize: '14px',
-                resize: 'vertical'
+                resize: isContentExpanded ? 'vertical' : 'none'
               }}
               value={cell.source.join('')}
               onChange={(e) => onUpdateCell(index, { source: [e.target.value] })}
@@ -234,7 +257,9 @@ export const NotebookCell = ({
             <Box 
               sx={{ 
                 p: 2, 
-                minHeight: 120, 
+                minHeight: isContentExpanded ? 400 : 120,
+                maxHeight: isContentExpanded ? 'none' : 120,
+                overflow: isContentExpanded ? 'visible' : 'hidden',
                 cursor: 'pointer',
                 '&:hover': { backgroundColor: 'action.hover' }
               }}
@@ -257,7 +282,7 @@ export const NotebookCell = ({
         ) : (
           <CodeMirror
             value={cell.source.join('')}
-            height="200px"
+            height={isContentExpanded ? "400px" : "200px"}
             extensions={[
               python(),
               autocompletion({ override: [pythonCompletion] }),
@@ -282,16 +307,44 @@ export const NotebookCell = ({
 
       {/* Cell output - only show for code cells */}
       {cell.cell_type === 'code' && (
-        <Box sx={{ p: 2, backgroundColor: 'background.default', borderTop: '1px solid', borderColor: 'divider', minHeight: '60px' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-            <Typography variant="caption" color="text.secondary">output:</Typography>
-            {isExecuting && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                executing...
-              </Typography>
-            )}
+        <Box sx={{ backgroundColor: 'background.default', borderTop: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">output:</Typography>
+              {isExecuting && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  executing...
+                </Typography>
+              )}
+            </Box>
+            
+            {/* Output expand toggle */}
+            <Button
+              size="small"
+              variant="contained"
+              sx={{
+                backgroundColor: '#3f3f46',
+                '&:hover': { backgroundColor: '#52525b' },
+                color: '#d4d4d8',
+                minWidth: 'auto',
+                px: 1
+              }}
+              onClick={() => setIsOutputExpanded(!isOutputExpanded)}
+              title={isOutputExpanded ? "Collapse output" : "Expand output"}
+            >
+              {isOutputExpanded ? <UnfoldLess fontSize="small" /> : <UnfoldMore fontSize="small" />}
+            </Button>
           </Box>
-          <Box sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
+          <Box sx={{ 
+            fontFamily: '"JetBrains Mono", monospace', 
+            fontSize: '0.875rem', 
+            whiteSpace: 'pre-wrap',
+            p: 2,
+            pt: 0,
+            maxHeight: isOutputExpanded ? 'none' : '200px',
+            overflow: isOutputExpanded ? 'visible' : 'auto',
+            minHeight: '60px'
+          }}>
             {cell.outputs?.length ? (
               Array.isArray(cell.outputs) ? (
                 cell.outputs.map((output, i) => (
