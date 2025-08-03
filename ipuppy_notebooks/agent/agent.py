@@ -51,7 +51,7 @@ class DataSciencePuppyAgent:
             self.config = ModelFactory.load_config(MODELS_JSON_PATH)
             # Get the first available model as default
             self.current_model_key = list(self.config.keys())[0]
-            self.model = ModelFactory.get_model(self.config[self.current_model_key], self.config)
+            self.model = ModelFactory.get_model(self.current_model_key, self.config)
         except Exception as e:
             logger.warning(f"Failed to load model via ModelFactory: {e}")
             sys.exit(1)
