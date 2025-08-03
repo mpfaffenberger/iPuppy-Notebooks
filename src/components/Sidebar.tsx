@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Card, CardContent, Typography, Button, IconButton, TextField, InputAdornment } from '@mui/material';
-import { PlayArrow, Delete, Add, Send } from '@mui/icons-material';
+import { PlayArrow, Delete, Add, Send, ClearAll } from '@mui/icons-material';
 
 interface SidebarProps {
   notebooks: string[];
@@ -12,6 +12,8 @@ interface SidebarProps {
   agentMessages: Array<{role: 'user' | 'agent', message: string, timestamp: number}>;
   onSendMessageToAgent: (message: string) => void;
   agentLoading: boolean;
+  onClearConversationHistory?: () => void;
+  currentNotebook?: string | null;
 }
 
 export const Sidebar = ({
@@ -23,7 +25,9 @@ export const Sidebar = ({
   onDeleteNotebook,
   agentMessages,
   onSendMessageToAgent,
-  agentLoading
+  agentLoading,
+  onClearConversationHistory,
+  currentNotebook
 }: SidebarProps) => {
   const [chatInput, setChatInput] = React.useState('');
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
@@ -121,7 +125,19 @@ export const Sidebar = ({
       {/* Puppy Scientist Agent */}
       <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <CardContent sx={{ pb: 1 }}>
-          <Typography variant="h5" gutterBottom>🐶 puppy scientist</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>🐶 puppy scientist</Typography>
+            {currentNotebook && onClearConversationHistory && (
+              <IconButton 
+                size="small" 
+                onClick={onClearConversationHistory}
+                title="Clear conversation history"
+                sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}
+              >
+                <ClearAll fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
         </CardContent>
         
         {/* Chat Messages */}

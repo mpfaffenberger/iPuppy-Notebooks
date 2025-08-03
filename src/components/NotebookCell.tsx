@@ -95,6 +95,22 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
     );
   }
 
+  // Handle Plotly JSON outputs
+  if (output.output_type === 'display_data' && output.data && 'application/vnd.plotly.v1+json' in output.data) {
+    const plotlyData = output.data['application/vnd.plotly.v1+json'];
+    return (
+      <div 
+        id={`plotly-div-${Math.random().toString(36).substr(2, 9)}`}
+        ref={(el) => {
+          if (el && (window as any).Plotly) {
+            (window as any).Plotly.newPlot(el, plotlyData.data, plotlyData.layout, plotlyData.config);
+          }
+        }}
+        style={{ width: '100%', height: '400px' }}
+      />
+    );
+  }
+
   // Handle other object outputs with text property
   if (output && typeof output === 'object' && 'text' in output && (output as any).text) {
     return <div>{cleanAnsiCodes((output as any).text)}</div>;

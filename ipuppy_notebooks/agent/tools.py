@@ -59,7 +59,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     """
     
     @pydantic_agent.tool
-    async def agent_add_new_cell(context: RunContext, cell_index: int, cell_type: str = "code", content: str = "") -> Dict[str, Any]:
+    async def agent_add_new_cell(context: RunContext, cell_index: int = 0, cell_type: str = "code", content: str = "") -> Dict[str, Any]:
         """Add a new cell at the specified index."""
         logger.info(f"agent_add_new_cell called with cell_index={cell_index}, cell_type={cell_type}, content_length={len(content)}")
         try:
@@ -76,7 +76,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_delete_cell(context: RunContext, cell_index: int) -> Dict[str, Any]:
+    async def agent_delete_cell(context: RunContext, cell_index: int = 0) -> Dict[str, Any]:
         """Delete a cell at the specified index."""
         logger.info(f"agent_delete_cell called with cell_index={cell_index}")
         try:
@@ -93,7 +93,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_alter_cell_content(context: RunContext, cell_index: int, content: str) -> Dict[str, Any]:
+    async def agent_alter_cell_content(context: RunContext, cell_index: int = 0, content: str = "") -> Dict[str, Any]:
         """Alter the content of a cell at the specified index."""
         logger.info(f"agent_alter_cell_content called with cell_index={cell_index}, content_length={len(content)}")
         try:
@@ -110,7 +110,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_execute_cell(context: RunContext, cell_index: int, code: str) -> Dict[str, Any]:
+    async def agent_execute_cell(context: RunContext, cell_index: int = 0, code: str = "") -> Dict[str, Any]:
         """Execute a cell at the specified index with the given code and return the execution outputs."""
         logger.info(f"agent_execute_cell called with cell_index={cell_index}, code_length={len(code)}")
         notebook_sid = data_science_agent.get_notebook_sid()
@@ -151,7 +151,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_swap_cell_type(context: RunContext, cell_index: int, new_type: str) -> Dict[str, Any]:
+    async def agent_swap_cell_type(context: RunContext, cell_index: int = 0, new_type: str = "") -> Dict[str, Any]:
         """Swap a cell between code and markdown types."""
         logger.info(f"agent_swap_cell_type called with cell_index={cell_index}, new_type={new_type}")
         try:
@@ -168,7 +168,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_move_cell(context: RunContext, cell_index: int, new_index: int) -> Dict[str, Any]:
+    async def agent_move_cell(context: RunContext, cell_index: int = 0, new_index: int = 0) -> Dict[str, Any]:
         """Move a cell from one index to another."""
         logger.info(f"agent_move_cell called with cell_index={cell_index}, new_index={new_index}")
         try:
@@ -185,7 +185,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_read_cell_input(context: RunContext, cell_index: int) -> Dict[str, Any]:
+    async def agent_read_cell_input(context: RunContext, cell_index: int = 0) -> Dict[str, Any]:
         """Read the input content of a cell at the specified index."""
         logger.info(f"agent_read_cell_input called with cell_index={cell_index}")
         notebook_sid = data_science_agent.get_notebook_sid()
@@ -211,7 +211,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_read_cell_output(context: RunContext, cell_index: int) -> Dict[str, Any]:
+    async def agent_read_cell_output(context: RunContext, cell_index: int = 0) -> Dict[str, Any]:
         """Read the output content of a cell at the specified index."""
         logger.info(f"agent_read_cell_output called with cell_index={cell_index}")
         notebook_sid = data_science_agent.get_notebook_sid()
@@ -264,7 +264,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
             return {"success": False, "error": str(e)}
     
     @pydantic_agent.tool
-    async def agent_share_your_reasoning(context: RunContext, reasoning: str, next_steps: str = None) -> Dict[str, Any]:
+    async def agent_share_your_reasoning(context: RunContext, reasoning: str = "", next_steps: str = "") -> Dict[str, Any]:
         """Share your reasoning and planned next steps."""
         logger.info(f"agent_share_your_reasoning called with reasoning_length={len(reasoning)}, has_next_steps={next_steps is not None}")
         try:

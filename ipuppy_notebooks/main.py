@@ -13,6 +13,7 @@ from ipuppy_notebooks.kernels.executor import executor
 from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
 from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code, handle_read_cell_input_response, handle_read_cell_output_response, handle_list_all_cells_response, handle_file_completion_request
 from ipuppy_notebooks.agent.agent import get_data_science_puppy_agent
+from ipuppy_notebooks.conversation_history import conversation_history
 
 # Create Socket.IO server
 sio = socketio.AsyncServer(
@@ -270,14 +271,67 @@ async def set_agent_notebook_sid(request: dict = Body(...)):
     """Set the notebook socket ID for the agent."""
     try:
         sid = request.get("sid", "")
+        notebook_name = request.get("notebook_name", "")
+        
         agent.set_notebook_sid(sid)
+        if notebook_name:
+            agent.set_current_notebook(notebook_name)
+        
         return {
             "success": True,
             "message": f"Set notebook SID to: {sid}",
-            "notebook_sid": agent.get_notebook_sid()
+            "notebook_sid": agent.get_notebook_sid(),
+            "current_notebook": agent.get_current_notebook()
         }
     except Exception as e:
         logger.error(f"Error setting agent notebook SID: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Conversation History Routes
+@app.get("/api/v1/agent/conversation-history/{notebook_name}")
+async def get_conversation_history(notebook_name: str):
+    """Get conversation history for a notebook."""
+    try:
+        history = conversation_history.load_conversation_history(notebook_name)
+        summary = conversation_history.get_conversation_summary(notebook_name)
+        return {
+            "success": True,
+            "notebook_name": notebook_name,
+            "history": history,
+            "summary": summary
+        }
+    except Exception as e:
+        logger.error(f"Error getting conversation history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/v1/agent/conversation-history/{notebook_name}")
+async def clear_conversation_history(notebook_name: str):
+    """Clear conversation history for a notebook."""
+    try:
+        success = conversation_history.clear_history(notebook_name)
+        if success:
+            return {
+                "success": True,
+                "message": f"Cleared conversation history for {notebook_name}"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to clear conversation history")
+    except Exception as e:
+        logger.error(f"Error clearing conversation history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/agent/conversation-summary/{notebook_name}")
+async def get_conversation_summary(notebook_name: str):
+    """Get conversation summary for a notebook."""
+    try:
+        summary = conversation_history.get_conversation_summary(notebook_name)
+        return {
+            "success": True,
+            "notebook_name": notebook_name,
+            "summary": summary
+        }
+    except Exception as e:
+        logger.error(f"Error getting conversation summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Socket.IO is now handling real-time communication - no WebSocket endpoint needed

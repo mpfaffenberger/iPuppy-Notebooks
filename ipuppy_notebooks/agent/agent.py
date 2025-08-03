@@ -13,6 +13,7 @@ from pydantic_ai import Agent
 
 from ipuppy_notebooks.agent.prompts import get_system_prompt
 from ipuppy_notebooks.agent.tools import register_data_science_tools
+from ipuppy_notebooks.conversation_history import conversation_history
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ class DataSciencePuppyAgent:
     def __init__(self):
         # Socket ID for notebook operations
         self.notebook_sid = ""
+        # Current notebook name for conversation history
+        self.current_notebook = ""
 
         # Load model
         try:
@@ -118,18 +121,62 @@ class DataSciencePuppyAgent:
     def get_notebook_sid(self) -> str:
         """Get the current notebook socket ID."""
         return self.notebook_sid
+    
+    def set_current_notebook(self, notebook_name: str):
+        """Set the current notebook name for conversation history."""
+        self.current_notebook = notebook_name
+        logger.info(f"Set current_notebook to: {notebook_name}")
+    
+    def get_current_notebook(self) -> str:
+        """Get the current notebook name."""
+        return self.current_notebook
 
     async def run(self, task: str) -> AgentResponse:
         """Run a data science task with the agent."""
         try:
-            result = await self.agent.run(task)
+            # Save user message to conversation history
+            if self.current_notebook:
+                conversation_history.add_message(self.current_notebook, "user", task)
+            
+            # Get conversation context for the agent
+            context = ""
+            if self.current_notebook:
+                context = conversation_history.get_recent_context(self.current_notebook, max_messages=10)
+            
+            # Prepare the full prompt with context
+            full_task = task
+            if context and context != "No previous conversation history.":
+                full_task = f"{context}\n\n=== Current Request ===\n{task}"
+            
+            result = await self.agent.run(full_task)
+            
+            # Save agent response to conversation history
+            if self.current_notebook and result.output:
+                conversation_history.add_message(
+                    self.current_notebook, 
+                    "agent", 
+                    result.output.output_message,
+                    metadata={"awaiting_user_input": result.output.awaiting_user_input}
+                )
+            
             return result.output
         except Exception as e:
             logger.error(f"Error running agent: {e}")
-            return AgentResponse(
+            error_response = AgentResponse(
                 output_message=f"Error executing data science task: {str(e)}",
                 awaiting_user_input=False
             )
+            
+            # Save error response to conversation history
+            if self.current_notebook:
+                conversation_history.add_message(
+                    self.current_notebook, 
+                    "agent", 
+                    error_response.output_message,
+                    metadata={"error": True}
+                )
+            
+            return error_response
 
 # Singleton instance
 _data_science_puppy_agent = None

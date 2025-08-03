@@ -24,7 +24,8 @@ def add_new_cell(cell_index: int, cell_type: str = "code", content: str = ""):
     data = {
         "cell_index": cell_index,
         "cell_type": cell_type,
-        "content": content
+        "content": content,
+        "scroll_to_cell": True
     }
     
     try:
@@ -62,7 +63,8 @@ def alter_cell_content(cell_index: int, content: str):
     """
     data = {
         "cell_index": cell_index,
-        "content": content
+        "content": content,
+        "scroll_to_cell": True
     }
     
     try:

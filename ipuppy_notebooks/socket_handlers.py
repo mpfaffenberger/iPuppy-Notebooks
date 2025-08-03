@@ -192,7 +192,8 @@ async def execute_code_streaming(cell_index: int, code: str):
         # Notify execution started
         await socketio_manager.broadcast("execution_result", {
             "cell_index": cell_index,
-            "status": "running"
+            "status": "running",
+            "scroll_to_cell": True
         })
         logger.info(f"Sent 'running' status for cell {cell_index}")
         

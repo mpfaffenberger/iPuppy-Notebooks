@@ -278,6 +278,11 @@ function App() {
     if (typeof data.cell_index === 'number') {
       const cellIndex = data.cell_index;
       
+      // Scroll to cell if requested
+      if (data.scroll_to_cell) {
+        scrollToCell(cellIndex);
+      }
+      
       if (data.status === 'running') {
         setExecutingCells(prev => new Set(prev).add(cellIndex));
       } else if (data.status === 'completed' || data.status === 'error') {
@@ -311,7 +316,7 @@ function App() {
   };
 
   const handleAddCellMessage = (data: any) => {
-    const { cell_index, cell_type, content } = data;
+    const { cell_index, cell_type, content, scroll_to_cell } = data;
     if (typeof cell_index === 'number') {
       setNotebookContent(prev => {
         const newContent = [...prev];
@@ -323,6 +328,11 @@ function App() {
         });
         return newContent;
       });
+      
+      // Scroll to the new cell if requested
+      if (scroll_to_cell) {
+        scrollToCell(cell_index);
+      }
     }
   };
 
@@ -334,9 +344,14 @@ function App() {
   };
 
   const handleAlterCellContentMessage = (data: any) => {
-    const { cell_index, content } = data;
+    const { cell_index, content, scroll_to_cell } = data;
     if (typeof cell_index === 'number' && typeof content === 'string') {
       updateCell(cell_index, { source: [content] });
+      
+      // Scroll to the altered cell if requested
+      if (scroll_to_cell) {
+        scrollToCell(cell_index);
+      }
     }
   };
 
@@ -453,6 +468,32 @@ function App() {
     }
   };
 
+  const clearConversationHistory = async () => {
+    if (!currentNotebook) return;
+    
+    const confirmed = confirm(`Clear conversation history for ${currentNotebook}?`);
+    if (!confirmed) return;
+    
+    try {
+      const response = await fetch(`/api/v1/agent/conversation-history/${encodeURIComponent(currentNotebook)}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        // Reset to just the welcome message
+        setAgentMessages([
+          { role: 'agent', message: 'Woof! I\\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!', timestamp: Date.now() }
+        ]);
+        showAlert('Conversation history cleared', 'success');
+      } else {
+        throw new Error('Failed to clear conversation history');
+      }
+    } catch (error) {
+      console.error('Error clearing conversation history:', error);
+      showAlert('Failed to clear conversation history', 'error');
+    }
+  };
+
   const sendMessageToAgent = async (message: string) => {
     // Add user message to chat
     setAgentMessages(prev => [...prev, { 
@@ -559,21 +600,52 @@ function App() {
       setCurrentNotebook(name);
       setNotebookContent(data.cells || []);
       
-      // Set the notebook SID for the agent
+      // Set the notebook SID and current notebook for the agent
       const currentSocket = socketRef.current;
       if (currentSocket?.connected) {
         try {
           const sidResponse = await fetch('/api/v1/agent/notebook-sid', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sid: currentSocket.id })
+            body: JSON.stringify({ 
+              sid: currentSocket.id,
+              notebook_name: name
+            })
           });
           if (sidResponse.ok) {
-            console.log('Set agent notebook SID for:', name);
+            console.log('Set agent notebook SID and current notebook for:', name);
           }
         } catch (sidError) {
           console.error('Failed to set agent notebook SID:', sidError);
         }
+      }
+      
+      // Load conversation history for this notebook
+      try {
+        const historyResponse = await fetch(`/api/v1/agent/conversation-history/${encodeURIComponent(name)}`);
+        if (historyResponse.ok) {
+          const historyData = await historyResponse.json();
+          const history = historyData.history || [];
+          
+          // Convert backend history format to frontend format
+          const convertedHistory = history.map((entry: any) => ({
+            role: entry.role === 'user' ? 'user' as const : 'agent' as const,
+            message: entry.message,
+            timestamp: new Date(entry.timestamp).getTime()
+          }));
+          
+          // Set the conversation history, keeping the welcome message if no history exists
+          if (convertedHistory.length > 0) {
+            setAgentMessages([
+              { role: 'agent', message: 'Woof! I\\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!', timestamp: Date.now() - 1000 },
+              ...convertedHistory
+            ]);
+          }
+          
+          console.log(`Loaded ${convertedHistory.length} conversation entries for ${name}`);
+        }
+      } catch (historyError) {
+        console.error('Failed to load conversation history:', historyError);
       }
     } catch (error) {
       console.error(error);
@@ -741,6 +813,27 @@ function App() {
       console.error('Failed to change model:', error);
       showAlert('Failed to change agent model', 'error');
     }
+  };
+
+  // Scroll utility function
+  const scrollToCell = (cellIndex: number) => {
+    setTimeout(() => {
+      const cellElement = document.querySelector(`[data-cell-index="${cellIndex}"]`) as HTMLElement;
+      if (cellElement) {
+        cellElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Add a subtle highlight effect
+        cellElement.style.transition = 'box-shadow 0.3s ease';
+        cellElement.style.boxShadow = '0 0 0 2px rgba(161, 161, 170, 0.3)';
+        setTimeout(() => {
+          cellElement.style.boxShadow = '';
+        }, 1500);
+      }
+    }, 100); // Small delay to ensure DOM is updated
   };
 
   // Utility functions
@@ -988,6 +1081,8 @@ function App() {
               agentMessages={agentMessages}
               onSendMessageToAgent={sendMessageToAgent}
               agentLoading={agentLoading}
+              onClearConversationHistory={clearConversationHistory}
+              currentNotebook={currentNotebook}
             />
           )}
 
