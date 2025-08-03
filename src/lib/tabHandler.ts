@@ -1,7 +1,7 @@
 import type { KeyBinding } from '@codemirror/view';
 import { indentMore } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
-import { startCompletion } from '@codemirror/autocomplete';
+import { startCompletion, completionStatus, moveCompletionSelection } from '@codemirror/autocomplete';
 
 /**
  * Check if cursor is inside a string literal
@@ -94,6 +94,13 @@ export function customTabHandler(): KeyBinding {
     run: (view) => {
       const state = view.state;
       const pos = state.selection.main.head;
+      
+      // Check if completion popup is open
+      const status = completionStatus(state);
+      if (status === 'active') {
+        // If completion is active, move to next completion
+        return moveCompletionSelection(true)(view);
+      }
       
       // If inside a string, trigger file path autocompletion
       if (isInsideString(state, pos)) {

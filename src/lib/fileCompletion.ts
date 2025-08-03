@@ -127,8 +127,20 @@ export async function filePathCompletion(context: CompletionContext, socket: any
         const text = context.state.doc.sliceString(stringNode.from, stringNode.to);
         // Use the text variable to avoid unused variable error
         if (!text) return null;
-        const fileName = partialPath.split('/').pop() || '';
-        const from = context.pos - fileName.length;
+        
+        // Handle home directory expansion for replacement range
+        let replacementStart = context.pos;
+        if (partialPath.startsWith('~/')) {
+          // Replace from the start of ~/
+          const tildeIndex = partialPath.indexOf('~/');
+          replacementStart = context.pos - (partialPath.length - tildeIndex);
+        } else {
+          // Normal case - just replace the filename part
+          const fileName = partialPath.split('/').pop() || '';
+          replacementStart = context.pos - fileName.length;
+        }
+        
+        const from = replacementStart;
         const to = context.pos;
         
         resolve({
