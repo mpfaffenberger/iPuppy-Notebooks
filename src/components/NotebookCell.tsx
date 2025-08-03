@@ -405,17 +405,24 @@ export const NotebookCell = ({
                 }
                 return filePathCompletion(context, socket);
               }] }),
-              // Test keymap to verify keymaps work
-              testKeymap,
-              // ONLY our custom tab handler - no other keymaps for now
-              keymap.of([customTabHandler()])
+              // Essential keymaps (Tab is handled by our custom interceptor)
+              keymap.of(completionKeymap),
+              keymap.of(defaultKeymap.filter(binding => binding.key !== 'Tab')),
+              keymap.of(historyKeymap),
+              keymap.of(searchKeymap)
             ]}
             theme={refinedTheme}
             onChange={(val) => onUpdateCell(index, { source: [val] })}
             onCreateEditor={(view) => {
               codeMirrorViewRef.current = view;
             }}
-            basicSetup={false}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              dropCursor: false,
+              allowMultipleSelections: false,
+              defaultKeymap: false, // We handle Tab ourselves
+            }}
             style={{
               fontSize: '14px',
               fontWeight: '300',
