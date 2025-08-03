@@ -159,22 +159,24 @@ export const NotebookCell = ({
           }
         </Button>
         
-        {/* Content expand toggle */}
-        <Button
-          size="small"
-          variant="contained"
-          sx={{
-            backgroundColor: '#3f3f46',
-            '&:hover': { backgroundColor: '#52525b' },
-            color: '#d4d4d8',
-            minWidth: 'auto',
-            px: 1
-          }}
-          onClick={() => setIsContentExpanded(!isContentExpanded)}
-          title={isContentExpanded ? "Collapse content" : "Expand content"}
-        >
-          {isContentExpanded ? <UnfoldLess fontSize="small" /> : <UnfoldMore fontSize="small" />}
-        </Button>
+        {/* Content expand toggle - only for code cells */}
+        {cell.cell_type === 'code' && (
+          <Button
+            size="small"
+            variant="contained"
+            sx={{
+              backgroundColor: '#3f3f46',
+              '&:hover': { backgroundColor: '#52525b' },
+              color: '#d4d4d8',
+              minWidth: 'auto',
+              px: 1
+            }}
+            onClick={() => setIsContentExpanded(!isContentExpanded)}
+            title={isContentExpanded ? "Collapse content" : "Expand content"}
+          >
+            {isContentExpanded ? <UnfoldLess fontSize="small" /> : <UnfoldMore fontSize="small" />}
+          </Button>
+        )}
         
         <Box sx={{ flex: 1 }} />
         
@@ -236,9 +238,8 @@ export const NotebookCell = ({
             <textarea
               style={{ 
                 width: '100%', 
-                height: isContentExpanded ? 'auto' : '120px',
-                minHeight: isContentExpanded ? '400px' : '120px',
-                maxHeight: isContentExpanded ? 'none' : '120px',
+                height: 'auto',
+                minHeight: '120px',
                 background: '#18181b', 
                 color: '#d4d4d8', 
                 padding: 16,
@@ -246,7 +247,7 @@ export const NotebookCell = ({
                 outline: 'none',
                 fontFamily: '"JetBrains Mono", monospace',
                 fontSize: '14px',
-                resize: isContentExpanded ? 'vertical' : 'none'
+                resize: 'vertical'
               }}
               value={cell.source.join('')}
               onChange={(e) => onUpdateCell(index, { source: [e.target.value] })}
@@ -257,9 +258,7 @@ export const NotebookCell = ({
             <Box 
               sx={{ 
                 p: 2, 
-                minHeight: isContentExpanded ? 400 : 120,
-                maxHeight: isContentExpanded ? 'none' : 120,
-                overflow: isContentExpanded ? 'visible' : 'hidden',
+                minHeight: 120,
                 cursor: 'pointer',
                 '&:hover': { backgroundColor: 'action.hover' }
               }}
@@ -282,7 +281,7 @@ export const NotebookCell = ({
         ) : (
           <CodeMirror
             value={cell.source.join('')}
-            height={isContentExpanded ? "400px" : "200px"}
+            height={isContentExpanded ? "auto" : "200px"}
             extensions={[
               python(),
               autocompletion({ override: [pythonCompletion] }),
