@@ -33,9 +33,8 @@ export const NotebookContainer = ({
   if (!currentNotebook) {
     return (
       <Box textAlign="center" mt={8} color="text.secondary">
-        <Typography variant="h4" gutterBottom>🐶 Welcome to iPuppy Notebooks! 🚀</Typography>
-        <Typography gutterBottom>Select a notebook or create a new one to begin your coding adventure! 🐕‍🦺</Typography>
-        <i className="fas fa-paw fa-3x" style={{ color: '#8a2be2' }} />
+        <Typography variant="h4" gutterBottom>🐶 welcome to ipuppy notebooks 🐶</Typography>
+        <Typography gutterBottom>select a notebook or create a new one to begin</Typography>
       </Box>
     );
   }
@@ -58,8 +57,17 @@ export const NotebookContainer = ({
         />
       ))}
       <Box mt={2}>
-        <Button variant="contained" startIcon={<Add />} onClick={onAddCell}>
-          🐶 Add Cell
+        <Button 
+          variant="contained" 
+          startIcon={<Add />} 
+          onClick={onAddCell}
+          sx={{ 
+            backgroundColor: '#3f3f46', 
+            '&:hover': { backgroundColor: '#52525b' },
+            color: '#d4d4d8'
+          }}
+        >
+          add cell
         </Button>
       </Box>
     </Box>

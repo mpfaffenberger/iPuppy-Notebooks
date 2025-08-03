@@ -1,5 +1,5 @@
 # %%
-# print('Welcome to iPuppy Notebooks!')
+print('Welcome to iPuppy Notebooks!')
 
 import time
 

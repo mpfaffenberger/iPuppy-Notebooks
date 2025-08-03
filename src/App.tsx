@@ -16,17 +16,95 @@ import './index.css';
 const darkTheme = createTheme({ 
   palette: { 
     mode: 'dark',
+    primary: {
+      main: '#a1a1aa',      // zinc-400
+      dark: '#71717a',      // zinc-500  
+      light: '#d4d4d8'      // zinc-300
+    },
+    secondary: {
+      main: '#71717a',      // zinc-500
+      dark: '#52525b',      // zinc-600
+      light: '#a1a1aa'      // zinc-400
+    },
+    background: {
+      default: '#18181b',   // zinc-900
+      paper: '#27272a'      // zinc-800
+    },
+    text: {
+      primary: '#d4d4d8',   // zinc-300 - subtle light grey
+      secondary: '#a1a1aa'  // zinc-400 - more muted
+    },
+    divider: '#3f3f46',     // zinc-700
     success: {
-      main: '#14b8a6',
-      dark: '#0d9488',
-      light: '#5eead4'
+      main: '#71717a',      // neutral grey instead of teal
+      dark: '#52525b',
+      light: '#a1a1aa'
     },
     error: {
-      main: '#f97316',
-      dark: '#ea580c',
-      light: '#fb923c'
+      main: '#71717a',      // neutral grey instead of orange
+      dark: '#52525b', 
+      light: '#a1a1aa'
+    },
+    warning: {
+      main: '#71717a',
+      dark: '#52525b',
+      light: '#a1a1aa'
+    },
+    info: {
+      main: '#71717a',
+      dark: '#52525b',
+      light: '#a1a1aa'
     }
-  } 
+  },
+  typography: {
+    fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Monaco, Inconsolata, "Roboto Mono", Consolas, "Courier New", monospace',
+    h1: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400 },
+    h2: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400 },
+    h3: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400 },
+    h4: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400 },
+    h5: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400 },
+    h6: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400 },
+    body1: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 300 },
+    body2: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 300 },
+    button: { fontFamily: '"JetBrains Mono", monospace', fontWeight: 400, textTransform: 'none' }
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: '6px',
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          textTransform: 'none',
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none'
+          },
+          '&:active': {
+            boxShadow: 'none'
+          },
+          '&:focus': {
+            boxShadow: 'none'
+          }
+        }
+      }
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: '8px',
+          border: '1px solid #3f3f46'
+        }
+      }
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontFamily: '"JetBrains Mono", monospace'
+        }
+      }
+    }
+  }
 });
 
 function App() {
@@ -45,7 +123,7 @@ function App() {
   const [executingCells, setExecutingCells] = useState<Set<number>>(new Set());
   const [editingMarkdownCells, setEditingMarkdownCells] = useState<Set<number>>(new Set());
   const [debugModalOpen, setDebugModalOpen] = useState<boolean>(false);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(false);
+  const [autoSaveEnabled] = useState<boolean>(false);
   
   // Use ref to avoid stale closure issues
   const socketRef = useRef<Socket | null>(null);
@@ -469,6 +547,9 @@ function App() {
         onOpenDebugModal={handleOpenDebugModal}
         currentNotebook={currentNotebook}
         onSaveNotebook={saveNotebook}
+        kernelStatus={kernelStatus}
+        onResetKernel={resetKernel}
+        onEnsureKernel={ensureKernel}
       />
 
       <Container maxWidth={false} sx={{ mt: 4, mb: 8 }}>
@@ -481,9 +562,6 @@ function App() {
               onCreateNotebook={createNotebook}
               onOpenNotebook={openNotebook}
               onDeleteNotebook={deleteNotebook}
-              kernelStatus={kernelStatus}
-              onResetKernel={resetKernel}
-              onEnsureKernel={ensureKernel}
             />
           )}
 

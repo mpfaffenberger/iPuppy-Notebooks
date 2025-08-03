@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,6 +13,13 @@
     @apply bg-base text-content-body;
     height: 100%;
     overflow: hidden;
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-weight: 300;
+  }
+  
+  * {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-weight: 300;
   }
 }
 
