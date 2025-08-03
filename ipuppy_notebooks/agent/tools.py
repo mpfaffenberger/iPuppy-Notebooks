@@ -12,6 +12,7 @@ from ipuppy_notebooks import (
     delete_cell, 
     alter_cell_content, 
     execute_cell, 
+    execute_cell_and_wait,
     swap_cell_type, 
     move_cell, 
     read_cell_input, 
@@ -110,15 +111,39 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     
     @pydantic_agent.tool
     async def agent_execute_cell(context: RunContext, cell_index: int, code: str) -> Dict[str, Any]:
-        """Execute a cell at the specified index with the given code."""
+        """Execute a cell at the specified index with the given code and return the execution outputs."""
         logger.info(f"agent_execute_cell called with cell_index={cell_index}, code_length={len(code)}")
+        notebook_sid = data_science_agent.get_notebook_sid()
+        logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
+        
+        if not notebook_sid:
+            error_msg = "NOTEBOOK_SID not set"
+            logger.error(f"agent_execute_cell failed: {error_msg}")
+            await emit_agent_message(error_msg, "execute_cell", False)
+            return {"success": False, "error": error_msg}
+        
         try:
-            logger.debug(f"Calling execute_cell({cell_index}, {repr(code)})")
-            execute_cell(cell_index, code)
-            message = f"Executed cell at index {cell_index}"
-            logger.info(f"Successfully executed cell: {message}")
-            await emit_agent_message(message, "execute_cell", True)
-            return {"success": True, "message": message}
+            logger.debug(f"Calling execute_cell_and_wait({cell_index}, {repr(code)}, {repr(notebook_sid)})")
+            await emit_agent_message(f"Executing cell {cell_index}...", "execute_cell", True)
+            
+            outputs = await execute_cell_and_wait(cell_index, code, notebook_sid, timeout=30.0)
+            
+            if outputs is not None:
+                message = f"Executed cell {cell_index} successfully with {len(outputs)} outputs"
+                logger.info(message)
+                await emit_agent_message(message, "execute_cell", True)
+                return {
+                    "success": True, 
+                    "message": message,
+                    "outputs": outputs,
+                    "cell_index": cell_index
+                }
+            else:
+                error_msg = f"Cell {cell_index} execution timed out or produced no outputs"
+                logger.warning(error_msg)
+                await emit_agent_message(error_msg, "execute_cell", False)
+                return {"success": False, "error": error_msg}
+                
         except Exception as e:
             logger.error(f"Error in agent_execute_cell: {e}", exc_info=True)
             error_msg = f"Failed to execute cell: {str(e)}"

@@ -89,6 +89,62 @@ def execute_cell(cell_index: int, code: str):
         asyncio.run(execute_code_streaming(cell_index, code))
 
 
+async def execute_cell_and_wait(cell_index: int, code: str, sid: str, timeout: float = 30.0) -> Optional[List[Any]]:
+    """
+    Execute a cell and wait for the execution to complete, then return the outputs.
+    
+    Args:
+        cell_index (int): The index of the cell to execute
+        code (str): The code to execute in the cell
+        sid (str): The Socket.IO session ID of the client
+        timeout (float): Maximum time to wait for execution completion
+        
+    Returns:
+        Optional[List[Any]]: The outputs from the execution, or None if failed
+    """
+    logger.info(f"execute_cell_and_wait called with cell_index={cell_index}, code_length={len(code)}, sid={repr(sid)}")
+    
+    try:
+        # First, update the cell content
+        logger.debug("Updating cell content before execution")
+        alter_cell_content(cell_index, code)
+        
+        # Wait a moment for the frontend to update
+        await asyncio.sleep(0.1)
+        
+        # Trigger execution
+        logger.debug("Triggering cell execution")
+        execute_cell(cell_index, code)
+        
+        # Wait for execution to complete by polling the cell outputs
+        logger.debug(f"Waiting for execution completion (timeout={timeout}s)")
+        start_time = asyncio.get_event_loop().time()
+        
+        while True:
+            # Check if we've timed out
+            if asyncio.get_event_loop().time() - start_time > timeout:
+                logger.warning(f"Timeout waiting for cell {cell_index} execution to complete")
+                return None
+            
+            # Wait a bit before checking
+            await asyncio.sleep(0.5)
+            
+            # Read the current cell outputs
+            try:
+                outputs = await read_cell_output(cell_index, sid)
+                if outputs is not None and len(outputs) > 0:
+                    logger.info(f"Cell {cell_index} execution completed with {len(outputs)} outputs")
+                    return outputs
+            except Exception as e:
+                logger.debug(f"Error reading cell output during wait: {e}")
+            
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error in execute_cell_and_wait: {e}", exc_info=True)
+        return None
+
+
 def swap_cell_type(cell_index: int, new_type: str):
     """
     Swap a cell between code and markdown types.
