@@ -5,19 +5,10 @@ import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { createTheme } from '@uiw/codemirror-themes';
 import { tags } from '@lezer/highlight';
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
-
-// Test keymap to debug
-const testKeymap = keymap.of([
-  {
-    key: 'Ctrl-Space',
-    run: () => {
-      console.log('🐕 Test keymap works! Ctrl-Space pressed');
-      return true;
-    }
-  }
-]);
+import { defaultKeymap, historyKeymap } from '@codemirror/commands';
+import { searchKeymap } from '@codemirror/search';
 import { filePathCompletion } from '../lib/fileCompletion';
 import { customTabHandler } from '../lib/tabHandler';
 import { marked } from 'marked';
