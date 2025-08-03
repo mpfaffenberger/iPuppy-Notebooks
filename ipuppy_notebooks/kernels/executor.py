@@ -244,7 +244,6 @@ class CodeExecutor:
             }
             
         except Exception as e:
-            print(f"Error in file completion: {e}")
             return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
 
 # Global executor instance
