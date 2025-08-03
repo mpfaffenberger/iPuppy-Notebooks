@@ -29,7 +29,15 @@ export const Header = ({
   onModelChange
 }: HeaderProps) => {
   return (
-    <AppBar position="static" color="default">
+    <AppBar 
+      position="sticky" 
+      color="default"
+      sx={{ 
+        top: 0,
+        zIndex: 1100,
+        borderBottom: '1px solid #3f3f46'
+      }}
+    >
       <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconButton

@@ -44,7 +44,7 @@ export const Sidebar = ({
   };
 
   return (
-    <Box sx={{ width: '400px', flexShrink: 0, height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ width: '400px', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
       {/* Notebook list */}
       <Card sx={{ maxHeight: '300px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <CardContent sx={{ pb: 1 }}>

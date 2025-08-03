@@ -22,9 +22,7 @@ from ipuppy_notebooks import (
 logger = logging.getLogger(__name__)
 
 
-# Get the Socket.IO session ID from environment variable
-# This should be set by the frontend when initializing the agent
-NOTEBOOK_SID = os.environ.get("NOTEBOOK_SID", "")
+# Note: notebook_sid is now accessed via data_science_agent.get_notebook_sid()
 
 
 async def emit_agent_message(message: str, tool_name: str = None, success: bool = True):
@@ -51,10 +49,15 @@ async def emit_agent_message(message: str, tool_name: str = None, success: bool 
         logger.error(f"Error emitting agent message: {e}")
 
 
-def register_data_science_tools(agent):
-    """Register all data science notebook tools to the provided agent."""
+def register_data_science_tools(pydantic_agent, data_science_agent):
+    """Register all data science notebook tools to the provided agent.
     
-    @agent.tool
+    Args:
+        pydantic_agent: The pydantic_ai Agent instance
+        data_science_agent: The DataSciencePuppyAgent instance containing notebook_sid
+    """
+    
+    @pydantic_agent.tool
     async def agent_add_new_cell(context: RunContext, cell_index: int, cell_type: str = "code", content: str = "") -> Dict[str, Any]:
         """Add a new cell at the specified index."""
         try:
@@ -68,7 +71,7 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "add_new_cell", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_delete_cell(context: RunContext, cell_index: int) -> Dict[str, Any]:
         """Delete a cell at the specified index."""
         try:
@@ -82,7 +85,7 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "delete_cell", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_alter_cell_content(context: RunContext, cell_index: int, content: str) -> Dict[str, Any]:
         """Alter the content of a cell at the specified index."""
         try:
@@ -96,7 +99,7 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "alter_cell_content", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_execute_cell(context: RunContext, cell_index: int, code: str) -> Dict[str, Any]:
         """Execute a cell at the specified index with the given code."""
         try:
@@ -110,7 +113,7 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "execute_cell", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_swap_cell_type(context: RunContext, cell_index: int, new_type: str) -> Dict[str, Any]:
         """Swap a cell between code and markdown types."""
         try:
@@ -124,7 +127,7 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "swap_cell_type", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_move_cell(context: RunContext, cell_index: int, new_index: int) -> Dict[str, Any]:
         """Move a cell from one index to another."""
         try:
@@ -138,16 +141,17 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "move_cell", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_read_cell_input(context: RunContext, cell_index: int) -> Dict[str, Any]:
         """Read the input content of a cell at the specified index."""
-        if not NOTEBOOK_SID:
+        notebook_sid = data_science_agent.get_notebook_sid()
+        if not notebook_sid:
             error_msg = "NOTEBOOK_SID not set"
             await emit_agent_message(error_msg, "read_cell_input", False)
             return {"success": False, "error": error_msg}
         
         try:
-            content = read_cell_input(cell_index, NOTEBOOK_SID)
+            content = read_cell_input(cell_index, notebook_sid)
             message = f"Read content from cell at index {cell_index}"
             await emit_agent_message(message, "read_cell_input", True)
             return {"success": True, "content": content or ""}
@@ -157,16 +161,17 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "read_cell_input", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_read_cell_output(context: RunContext, cell_index: int) -> Dict[str, Any]:
         """Read the output content of a cell at the specified index."""
-        if not NOTEBOOK_SID:
+        notebook_sid = data_science_agent.get_notebook_sid()
+        if not notebook_sid:
             error_msg = "NOTEBOOK_SID not set"
             await emit_agent_message(error_msg, "read_cell_output", False)
             return {"success": False, "error": error_msg}
         
         try:
-            output = read_cell_output(cell_index, NOTEBOOK_SID)
+            output = read_cell_output(cell_index, notebook_sid)
             message = f"Read output from cell at index {cell_index}"
             await emit_agent_message(message, "read_cell_output", True)
             return {"success": True, "output": output or []}
@@ -176,16 +181,17 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "read_cell_output", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_list_all_cells(context: RunContext) -> Dict[str, Any]:
         """List all cells in the notebook with their types and content."""
-        if not NOTEBOOK_SID:
+        notebook_sid = data_science_agent.get_notebook_sid()
+        if not notebook_sid:
             error_msg = "NOTEBOOK_SID not set"
             await emit_agent_message(error_msg, "list_all_cells", False)
             return {"success": False, "error": error_msg}
         
         try:
-            cells = list_all_cells(NOTEBOOK_SID)
+            cells = list_all_cells(notebook_sid)
             message = f"Listed all cells in notebook ({len(cells or [])} cells found)"
             await emit_agent_message(message, "list_all_cells", True)
             return {"success": True, "cells": cells or []}
@@ -195,7 +201,7 @@ def register_data_science_tools(agent):
             await emit_agent_message(error_msg, "list_all_cells", False)
             return {"success": False, "error": str(e)}
     
-    @agent.tool
+    @pydantic_agent.tool
     async def agent_share_your_reasoning(context: RunContext, reasoning: str, next_steps: str = None) -> Dict[str, Any]:
         """Share your reasoning and planned next steps."""
         try:

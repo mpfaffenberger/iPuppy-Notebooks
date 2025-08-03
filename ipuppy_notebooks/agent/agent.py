@@ -45,6 +45,8 @@ class DataSciencePuppyAgent:
     """A data science specialized agent that controls iPuppy Notebooks."""
     
     def __init__(self):
+        # Socket ID for notebook operations
+        self.notebook_sid = ""
 
         # Load model
         try:
@@ -65,7 +67,7 @@ class DataSciencePuppyAgent:
         )
         
         # Register tools
-        register_data_science_tools(self.agent)
+        register_data_science_tools(self.agent, self)
 
     def set_model(self, model_key: str) -> bool:
         """Set the active model by key from the configuration."""
@@ -91,7 +93,7 @@ class DataSciencePuppyAgent:
             )
             
             # Re-register tools on the new agent
-            register_data_science_tools(self.agent)
+            register_data_science_tools(self.agent, self)
             
             logger.info(f"Successfully switched to model: {model_key}")
             return True
@@ -107,6 +109,15 @@ class DataSciencePuppyAgent:
     def get_current_model(self) -> str:
         """Get the currently active model key."""
         return self.current_model_key
+
+    def set_notebook_sid(self, sid: str):
+        """Set the notebook socket ID for tool operations."""
+        self.notebook_sid = sid
+        logger.info(f"Set notebook_sid to: {sid}")
+
+    def get_notebook_sid(self) -> str:
+        """Get the current notebook socket ID."""
+        return self.notebook_sid
 
     async def run(self, task: str) -> AgentResponse:
         """Run a data science task with the agent."""

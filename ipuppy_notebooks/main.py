@@ -186,11 +186,7 @@ async def run_agent(request: dict = Body(...)):
         if not task.strip():
             raise HTTPException(status_code=400, detail="Task cannot be empty")
         
-        # Set the NOTEBOOK_SID environment variable for tools to use
-        # You might want to get this from the request or session
-        sid = request.get("sid", "")
-        if sid:
-            os.environ["NOTEBOOK_SID"] = sid
+        # Note: notebook_sid is now managed via the agent's set_notebook_sid method
         
         logger.info(f"Running agent with task: {task}")
         result = await agent.run(task)
@@ -233,6 +229,21 @@ async def set_agent_model(model_key: str):
             raise HTTPException(status_code=400, detail=f"Failed to switch to model: {model_key}")
     except Exception as e:
         logger.error(f"Error setting agent model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/agent/notebook-sid")
+async def set_agent_notebook_sid(request: dict = Body(...)):
+    """Set the notebook socket ID for the agent."""
+    try:
+        sid = request.get("sid", "")
+        agent.set_notebook_sid(sid)
+        return {
+            "success": True,
+            "message": f"Set notebook SID to: {sid}",
+            "notebook_sid": agent.get_notebook_sid()
+        }
+    except Exception as e:
+        logger.error(f"Error setting agent notebook SID: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Socket.IO is now handling real-time communication - no WebSocket endpoint needed

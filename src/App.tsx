@@ -404,6 +404,8 @@ function App() {
       // Get the current socket ID
       const currentSocket = socketRef.current;
       const socketId = currentSocket?.id || '';
+      console.log('Sending agent request with socket ID:', socketId);
+      console.log('Socket connected:', currentSocket?.connected);
       
       // Call the agent API
       const response = await fetch('/api/v1/agent/run', {
@@ -497,6 +499,23 @@ function App() {
       const data = await res.json();
       setCurrentNotebook(name);
       setNotebookContent(data.cells || []);
+      
+      // Set the notebook SID for the agent
+      const currentSocket = socketRef.current;
+      if (currentSocket?.connected) {
+        try {
+          const sidResponse = await fetch('/api/v1/agent/notebook-sid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sid: currentSocket.id })
+          });
+          if (sidResponse.ok) {
+            console.log('Set agent notebook SID for:', name);
+          }
+        } catch (sidError) {
+          console.error('Failed to set agent notebook SID:', sidError);
+        }
+      }
     } catch (error) {
       console.error(error);
       showAlert('Failed to open notebook', 'error');
@@ -853,6 +872,12 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100vh',
+        overflow: 'hidden'
+      }}>
       
       <Snackbar
         open={!!alert}
@@ -881,8 +906,18 @@ function App() {
         onModelChange={handleModelChange}
       />
 
-      <Container maxWidth={false} sx={{ mt: 4, mb: 8 }}>
-        <Box sx={{ display: 'flex', gap: 3 }}>
+      <Container 
+        maxWidth={false} 
+        sx={{ 
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          pt: 2,
+          pb: 2,
+          overflow: 'hidden'
+        }}
+      >
+        <Box sx={{ display: 'flex', gap: 3, flex: 1, overflow: 'hidden' }}>
           {!sidebarCollapsed && (
             <Sidebar
               notebooks={notebooks}
@@ -897,7 +932,7 @@ function App() {
             />
           )}
 
-          <Box sx={{ flex: 1, minWidth: 0, height: 'calc(100vh - 120px)', overflowY: 'auto', pr: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0, overflowY: 'auto', pr: 1 }}>
             <NotebookContainer
               currentNotebook={currentNotebook}
               notebookContent={notebookContent}
@@ -917,6 +952,7 @@ function App() {
           </Box>
         </Box>
       </Container>
+      </Box>
 
       <DebugModal
         open={debugModalOpen}
