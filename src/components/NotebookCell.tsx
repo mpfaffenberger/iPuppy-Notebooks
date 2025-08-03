@@ -120,6 +120,7 @@ export const NotebookCell = ({
   canMoveUp,
   canMoveDown,
   pythonCompletion,
+  socket,
   cleanAnsiCodes
 }: NotebookCellProps) => {
   

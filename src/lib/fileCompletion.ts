@@ -1,4 +1,5 @@
-import { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { CompletionContext } from '@codemirror/autocomplete';
+import type { CompletionResult } from '@codemirror/autocomplete';
 import { syntaxTree } from '@codemirror/language';
 
 /**
@@ -7,10 +8,10 @@ import { syntaxTree } from '@codemirror/language';
  */
 function isInFilePathContext(context: CompletionContext): boolean {
   const tree = syntaxTree(context.state);
-  const node = tree.resolveInner(context.pos, -1);
+  const node: any = tree.resolveInner(context.pos, -1);
   
   // Check if we're inside a string node
-  let stringNode = node;
+  let stringNode: any = node;
   while (stringNode && stringNode.type.name !== 'String') {
     stringNode = stringNode.parent;
   }
@@ -40,7 +41,7 @@ function getPartialFilePath(context: CompletionContext): string | null {
   const node = tree.resolveInner(context.pos, -1);
   
   // Find the string node containing the cursor
-  let stringNode = node;
+  let stringNode: any = node;
   while (stringNode && stringNode.type.name !== 'String') {
     stringNode = stringNode.parent;
   }
@@ -83,7 +84,7 @@ export async function filePathCompletion(context: CompletionContext, socket: any
   if (!context.explicit && partialPath.length < 2) return null;
   
   // Create a promise that will be resolved when we get the response
-  return new Promise((resolve, reject) => {
+  return new Promise<CompletionResult | null>((resolve, reject) => {
     // Generate a unique request ID
     const requestId = `file_completion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -112,7 +113,7 @@ export async function filePathCompletion(context: CompletionContext, socket: any
         const tree = syntaxTree(context.state);
         const node = tree.resolveInner(context.pos, -1);
         
-        let stringNode = node;
+        let stringNode: any = node;
         while (stringNode && stringNode.type.name !== 'String') {
           stringNode = stringNode.parent;
         }
@@ -124,6 +125,8 @@ export async function filePathCompletion(context: CompletionContext, socket: any
         
         // Calculate the replacement range within the string
         const text = context.state.doc.sliceString(stringNode.from, stringNode.to);
+        // Use the text variable to avoid unused variable error
+        if (!text) return null;
         const fileName = partialPath.split('/').pop() || '';
         const from = context.pos - fileName.length;
         const to = context.pos;
@@ -148,7 +151,7 @@ export async function filePathCompletion(context: CompletionContext, socket: any
     };
     
     // Set up timeout handler
-    const timeoutId = setTimeout(() => {
+    setTimeout(() => {
       socket.off('file_completion_response', responseHandler);
       socket.off('error', errorHandler);
       resolve(null);

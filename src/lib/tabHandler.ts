@@ -1,7 +1,7 @@
-import { KeyBinding } from '@codemirror/view';
+import type { KeyBinding } from '@codemirror/view';
 import { indentMore } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
-import { CompletionContext, startCompletion } from '@codemirror/autocomplete';
+import { startCompletion } from '@codemirror/autocomplete';
 
 /**
  * Check if cursor is inside a string literal
@@ -10,7 +10,7 @@ function isInsideString(state: any, pos: number): boolean {
   const tree = syntaxTree(state);
   const node = tree.resolveInner(pos, -1);
   
-  let currentNode = node;
+  let currentNode: any = node;
   while (currentNode) {
     if (currentNode.type.name === 'String') {
       return true;
