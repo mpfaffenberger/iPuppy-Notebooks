@@ -13,6 +13,9 @@ interface NotebookContainerProps {
   onDeleteCell: (index: number) => void;
   onAddCell: () => void;
   onToggleMarkdownEdit: (index: number) => void;
+  onMoveCellUp: (index: number) => void;
+  onMoveCellDown: (index: number) => void;
+  onFocusNextCell: (index: number) => void;
   pythonCompletion: any;
   cleanAnsiCodes: (text: string) => string;
 }
@@ -27,6 +30,9 @@ export const NotebookContainer = ({
   onDeleteCell,
   onAddCell,
   onToggleMarkdownEdit,
+  onMoveCellUp,
+  onMoveCellDown,
+  onFocusNextCell,
   pythonCompletion,
   cleanAnsiCodes
 }: NotebookContainerProps) => {
@@ -52,6 +58,11 @@ export const NotebookContainer = ({
           onExecuteCell={onExecuteCell}
           onDeleteCell={onDeleteCell}
           onToggleMarkdownEdit={onToggleMarkdownEdit}
+          onMoveCellUp={onMoveCellUp}
+          onMoveCellDown={onMoveCellDown}
+          onFocusNextCell={onFocusNextCell}
+          canMoveUp={idx > 0}
+          canMoveDown={idx < notebookContent.length - 1}
           pythonCompletion={pythonCompletion}
           cleanAnsiCodes={cleanAnsiCodes}
         />

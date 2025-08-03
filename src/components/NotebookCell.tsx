@@ -1,5 +1,6 @@
+import React from 'react';
 import { Box, Select, MenuItem, Button, Typography } from '@mui/material';
-import { PlayArrow, Delete } from '@mui/icons-material';
+import { PlayArrow, Delete, KeyboardArrowUp, KeyboardArrowDown } from '@mui/icons-material';
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { createTheme } from '@uiw/codemirror-themes';
@@ -18,6 +19,11 @@ interface NotebookCellProps {
   onExecuteCell: (index: number) => void;
   onDeleteCell: (index: number) => void;
   onToggleMarkdownEdit: (index: number) => void;
+  onMoveCellUp: (index: number) => void;
+  onMoveCellDown: (index: number) => void;
+  onFocusNextCell: (index: number) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   pythonCompletion: any; // Type from CodeMirror
   cleanAnsiCodes: (text: string) => string;
 }
@@ -60,11 +66,58 @@ export const NotebookCell = ({
   onExecuteCell,
   onDeleteCell,
   onToggleMarkdownEdit,
+  onMoveCellUp,
+  onMoveCellDown,
+  onFocusNextCell,
+  canMoveUp,
+  canMoveDown,
   pythonCompletion,
   cleanAnsiCodes
 }: NotebookCellProps) => {
+  
+  // Use useEffect to add global event listener for this cell
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if this cell is focused
+      const activeElement = document.activeElement;
+      const cellElement = document.querySelector(`[data-cell-index="${index}"]`);
+      
+      if (cellElement && cellElement.contains(activeElement)) {
+        if (event.shiftKey && event.key === 'Enter') {
+          console.log('Global handler: Shift+Enter detected for cell', index);
+          event.preventDefault();
+          event.stopPropagation();
+          
+          if (cell.cell_type === 'code') {
+            console.log('Global handler: Executing code cell', index);
+            onExecuteCell(index);
+            setTimeout(() => {
+              console.log('Global handler: Focusing next cell after', index);
+              onFocusNextCell(index);
+            }, 100);
+          } else if (cell.cell_type === 'markdown' && isEditingMarkdown) {
+            console.log('Global handler: Switching markdown to preview', index);
+            onToggleMarkdownEdit(index);
+            setTimeout(() => {
+              console.log('Global handler: Focusing next cell after markdown', index);
+              onFocusNextCell(index);
+            }, 100);
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [index, cell.cell_type, isEditingMarkdown, onExecuteCell, onToggleMarkdownEdit, onFocusNextCell]);
   return (
-    <Box sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+    <Box 
+      data-cell-index={index}
+      sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}
+    >
       {/* Cell header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, backgroundColor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
         <Select
@@ -103,6 +156,43 @@ export const NotebookCell = ({
           }
         </Button>
         <Box sx={{ flex: 1 }} />
+        
+        {/* Move buttons */}
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={!canMoveUp}
+            sx={{
+              backgroundColor: '#3f3f46',
+              '&:hover': { backgroundColor: '#52525b' },
+              '&:disabled': { backgroundColor: '#27272a', color: '#71717a' },
+              color: '#d4d4d8',
+              minWidth: 'auto',
+              px: 1
+            }}
+            onClick={() => onMoveCellUp(index)}
+          >
+            <KeyboardArrowUp fontSize="small" />
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={!canMoveDown}
+            sx={{
+              backgroundColor: '#3f3f46',
+              '&:hover': { backgroundColor: '#52525b' },
+              '&:disabled': { backgroundColor: '#27272a', color: '#71717a' },
+              color: '#d4d4d8',
+              minWidth: 'auto',
+              px: 1
+            }}
+            onClick={() => onMoveCellDown(index)}
+          >
+            <KeyboardArrowDown fontSize="small" />
+          </Button>
+        </Box>
+        
         <Button 
           size="small" 
           variant="contained" 

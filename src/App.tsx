@@ -354,12 +354,18 @@ function App() {
   };
 
   const executeCell = async (index: number) => {
+    console.log('executeCell called for index:', index);
     const cell = notebookContent[index];
-    if (cell.cell_type !== 'code') return;
+    if (cell.cell_type !== 'code') {
+      console.log('Not a code cell, returning');
+      return;
+    }
     if (!cell.source.join('').trim()) {
+      console.log('Cell is empty');
       showAlert('Cell is empty', 'warning');
       return;
     }
+    console.log('Proceeding with cell execution');
 
     const currentSocket = socketRef.current;
     if (!currentSocket || !currentSocket.connected) {
@@ -524,6 +530,73 @@ function App() {
     }
   };
 
+  const handleMoveCellUp = (index: number) => {
+    if (index > 0) {
+      setNotebookContent(prev => {
+        const newContent = [...prev];
+        [newContent[index - 1], newContent[index]] = [newContent[index], newContent[index - 1]];
+        return newContent;
+      });
+      // Auto-save disabled - manual save only
+      // if (currentNotebook && autoSaveEnabled) {
+      //   setTimeout(() => saveNotebook(), 100);
+      // }
+    }
+  };
+
+  const handleMoveCellDown = (index: number) => {
+    if (index < notebookContent.length - 1) {
+      setNotebookContent(prev => {
+        const newContent = [...prev];
+        [newContent[index], newContent[index + 1]] = [newContent[index + 1], newContent[index]];
+        return newContent;
+      });
+      // Auto-save disabled - manual save only
+      // if (currentNotebook && autoSaveEnabled) {
+      //   setTimeout(() => saveNotebook(), 100);
+      // }
+    }
+  };
+
+  const handleFocusNextCell = (currentIndex: number) => {
+    const nextIndex = currentIndex + 1;
+    
+    // If there's a next cell, try to focus it
+    if (nextIndex < notebookContent.length) {
+      // Find the next cell's CodeMirror or textarea element
+      setTimeout(() => {
+        const nextCellElement = document.querySelector(`[data-cell-index="${nextIndex}"]`);
+        if (nextCellElement) {
+          // Look for CodeMirror editor
+          const codeMirrorElement = nextCellElement.querySelector('.cm-editor .cm-content');
+          if (codeMirrorElement) {
+            (codeMirrorElement as HTMLElement).focus();
+            return;
+          }
+          
+          // Look for textarea (markdown edit mode)
+          const textareaElement = nextCellElement.querySelector('textarea');
+          if (textareaElement) {
+            textareaElement.focus();
+            return;
+          }
+        }
+      }, 150);
+    } else {
+      // If there's no next cell, create a new one and focus it
+      setNotebookContent(prev => [...prev, { cell_type: 'code', source: [''], outputs: [] }]);
+      setTimeout(() => {
+        const newCellElement = document.querySelector(`[data-cell-index="${nextIndex}"]`);
+        if (newCellElement) {
+          const codeMirrorElement = newCellElement.querySelector('.cm-editor .cm-content');
+          if (codeMirrorElement) {
+            (codeMirrorElement as HTMLElement).focus();
+          }
+        }
+      }, 200);
+    }
+  };
+
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
@@ -576,6 +649,9 @@ function App() {
               onDeleteCell={handleDeleteCell}
               onAddCell={addCell}
               onToggleMarkdownEdit={handleToggleMarkdownEdit}
+              onMoveCellUp={handleMoveCellUp}
+              onMoveCellDown={handleMoveCellDown}
+              onFocusNextCell={handleFocusNextCell}
               pythonCompletion={pythonCompletion}
               cleanAnsiCodes={cleanAnsiCodes}
             />

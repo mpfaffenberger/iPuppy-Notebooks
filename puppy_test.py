@@ -1,13 +1,12 @@
+# %% [markdown]
+# Welcome to iPuppy Notebooks!!!
+
+### Agentic AI Coding for Data Science!
+
+- This is a markdown list item
+- So is this
+
+1. This is numbered list
+2. So is this
 # %%
 print('Welcome to iPuppy Notebooks!')
-
-import time
-
-for i in range(20):
-  print(i)
-  time.sleep(0.2)
-# %%
-#import pandas as pd
-print("hi")
-
-print("hi2")
