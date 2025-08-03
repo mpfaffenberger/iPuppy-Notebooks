@@ -131,7 +131,7 @@ def move_cell(cell_index: int, new_index: int):
         asyncio.run(socketio_manager.broadcast("move_cell", data))
 
 
-def read_cell_input(cell_index: int, sid: str) -> Optional[str]:
+async def read_cell_input(cell_index: int, sid: str) -> Optional[str]:
     """
     Read the input content of a cell at the specified index.
     
@@ -145,27 +145,14 @@ def read_cell_input(cell_index: int, sid: str) -> Optional[str]:
     data = {"cell_index": cell_index}
     
     try:
-        loop = asyncio.get_running_loop()
-        # Create a task to send the request and wait for response
-        future = asyncio.run_coroutine_threadsafe(
-            socketio_manager.send_request_to_client("read_cell_input_request", data, sid), 
-            loop
-        )
-        result = future.result(timeout=5.0)
-        return result
-    except RuntimeError:
-        # No running loop, create a new one
-        async def _read_input():
-            return await socketio_manager.send_request_to_client("read_cell_input_request", data, sid)
-        
-        result = asyncio.run(_read_input())
+        result = await socketio_manager.send_request_to_client("read_cell_input_request", data, sid)
         return result
     except Exception as e:
         logger.error(f"Error reading cell input at index {cell_index} - Exception type: {type(e).__name__}, Exception value: {repr(e)}", exc_info=True)
         return None
 
 
-def read_cell_output(cell_index: int, sid: str) -> Optional[List[Any]]:
+async def read_cell_output(cell_index: int, sid: str) -> Optional[List[Any]]:
     """
     Read the output content of a cell at the specified index.
     
@@ -179,26 +166,13 @@ def read_cell_output(cell_index: int, sid: str) -> Optional[List[Any]]:
     data = {"cell_index": cell_index}
     
     try:
-        loop = asyncio.get_running_loop()
-        # Create a task to send the request and wait for response
-        future = asyncio.run_coroutine_threadsafe(
-            socketio_manager.send_request_to_client("read_cell_output_request", data, sid), 
-            loop
-        )
-        result = future.result(timeout=5.0)
-        return result
-    except RuntimeError:
-        # No running loop, create a new one
-        async def _read_output():
-            return await socketio_manager.send_request_to_client("read_cell_output_request", data, sid)
-        
-        result = asyncio.run(_read_output())
+        result = await socketio_manager.send_request_to_client("read_cell_output_request", data, sid)
         return result
     except Exception as e:
         logger.error(f"Error reading cell output at index {cell_index}: {e}")
         return None
 
-def list_all_cells(sid: str) -> Optional[List[Dict[str, Any]]]:
+async def list_all_cells(sid: str) -> Optional[List[Dict[str, Any]]]:
     """
     List all cells in the notebook with their types and content.
     
@@ -212,30 +186,9 @@ def list_all_cells(sid: str) -> Optional[List[Dict[str, Any]]]:
     data = {}
     
     try:
-        logger.debug("Attempting to get running event loop")
-        loop = asyncio.get_running_loop()
-        logger.debug(f"Got running loop: {loop}")
-        
-        # Create a task to send the request and wait for response
-        logger.debug("Creating coroutine future for list_all_cells_request")
-        future = asyncio.run_coroutine_threadsafe(
-            socketio_manager.send_request_to_client("list_all_cells_request", data, sid), 
-            loop
-        )
-        logger.debug("Waiting for future result with 10s timeout")
-        result = future.result(timeout=10.0)
+        logger.debug("Calling send_request_to_client for list_all_cells_request")
+        result = await socketio_manager.send_request_to_client("list_all_cells_request", data, sid)
         logger.info(f"Successfully got list_all_cells result: {type(result)}, length={len(result) if result else 'None'}")
-        return result
-    except RuntimeError as e:
-        logger.info(f"RuntimeError (no running loop): {e}, creating new event loop")
-        # No running loop, create a new one
-        async def _list_cells():
-            logger.debug("Inside _list_cells, calling send_request_to_client")
-            return await socketio_manager.send_request_to_client("list_all_cells_request", data, sid)
-        
-        logger.debug("Running _list_cells with asyncio.run")
-        result = asyncio.run(_list_cells())
-        logger.info(f"Successfully got list_all_cells result via new loop: {type(result)}, length={len(result) if result else 'None'}")
         return result
     except Exception as e:
         logger.error(f"Error listing all cells - Exception type: {type(e).__name__}, Exception value: {repr(e)}", exc_info=True)

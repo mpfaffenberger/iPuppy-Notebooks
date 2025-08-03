@@ -174,7 +174,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         
         try:
             logger.debug(f"Calling read_cell_input({cell_index}, {repr(notebook_sid)})")
-            content = read_cell_input(cell_index, notebook_sid)
+            content = await read_cell_input(cell_index, notebook_sid)
             message = f"Read content from cell at index {cell_index}"
             logger.info(f"Successfully read cell input: {message}, content_length={len(content or '')}")
             await emit_agent_message(message, "read_cell_input", True)
@@ -200,7 +200,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         
         try:
             logger.debug(f"Calling read_cell_output({cell_index}, {repr(notebook_sid)})")
-            output = read_cell_output(cell_index, notebook_sid)
+            output = await read_cell_output(cell_index, notebook_sid)
             message = f"Read output from cell at index {cell_index}"
             logger.info(f"Successfully read cell output: {message}, output_length={len(output or [])}")
             await emit_agent_message(message, "read_cell_output", True)
@@ -226,7 +226,7 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         
         try:
             logger.debug(f"Calling list_all_cells({repr(notebook_sid)})")
-            cells = list_all_cells(notebook_sid)
+            cells = await list_all_cells(notebook_sid)
             message = f"Listed all cells in notebook ({len(cells or [])} cells found)"
             logger.info(f"Successfully listed cells: {message}")
             logger.debug(f"Cells data: {repr(cells)}")

@@ -133,6 +133,12 @@ function App() {
   
   // Use ref to avoid stale closure issues
   const socketRef = useRef<Socket | null>(null);
+  const notebookContentRef = useRef<NotebookCellType[]>([]);
+
+  // Update ref whenever notebookContent changes
+  useEffect(() => {
+    notebookContentRef.current = notebookContent;
+  }, [notebookContent]);
 
   // Effects
   useEffect(() => {
@@ -365,12 +371,16 @@ function App() {
 
   const handleReadCellInputRequest = (data: any, socket: Socket) => {
     const { cell_index, request_id } = data;
+    console.log('handleReadCellInputRequest called with:', data);
+    console.log('Current notebookContentRef.current length:', notebookContentRef.current.length);
     if (typeof cell_index === 'number' && request_id) {
-      const cell = notebookContent[cell_index];
+      const cell = notebookContentRef.current[cell_index];
       if (cell) {
         const content = cell.source.join('');
+        console.log('Sending cell input content:', content);
         socket.emit('read_cell_input_response', { request_id, content });
       } else {
+        console.log('Cell not found, sending empty content');
         socket.emit('read_cell_input_response', { request_id, content: '' });
       }
     }
@@ -378,12 +388,18 @@ function App() {
 
   const handleReadCellOutputRequest = (data: any, socket: Socket) => {
     const { cell_index, request_id } = data;
+    console.log('handleReadCellOutputRequest called with:', data);
+    console.log('Current notebookContentRef.current length:', notebookContentRef.current.length);
+    console.log('Requested cell_index:', cell_index);
     if (typeof cell_index === 'number' && request_id) {
-      const cell = notebookContent[cell_index];
+      const cell = notebookContentRef.current[cell_index];
+      console.log('Cell at index:', cell);
       if (cell) {
         const outputs = cell.outputs || [];
+        console.log('Sending outputs:', outputs);
         socket.emit('read_cell_output_response', { request_id, outputs });
       } else {
+        console.log('Cell not found, sending empty outputs');
         socket.emit('read_cell_output_response', { request_id, outputs: [] });
       }
     }
@@ -391,14 +407,18 @@ function App() {
 
   const handleListAllCellsRequest = (data: any, socket: Socket) => {
     const { request_id } = data;
+    console.log('handleListAllCellsRequest called with:', data);
+    console.log('Current notebookContentRef.current length:', notebookContentRef.current.length);
+    console.log('Current notebookContentRef.current:', notebookContentRef.current);
     if (request_id) {
       // Return all cells with their index, type, source, and outputs
-      const cells = notebookContent.map((cell, index) => ({
+      const cells = notebookContentRef.current.map((cell, index) => ({
         index,
         cell_type: cell.cell_type,
         source: cell.source,
         outputs: cell.outputs || []
       }));
+      console.log('Sending cells response:', cells);
       socket.emit('list_all_cells_response', { request_id, cells });
     }
   };
