@@ -490,15 +490,22 @@ async def handle_file_completion_request(sid, data):
             logger.warning("Received file_completion_request without request_id")
             return
         
+        logger.info(f"🏠 File completion request: '{partial_path}'")
+        
         # Get completions for the partial path
         completions = get_file_completions(partial_path)
         
+        logger.info(f"🏠 File completions returned: {len(completions)} items")
+        
         # Send response back to client
-        from ipuppy_notebooks.main import sio
-        await sio.emit('file_completion_response', {
+        response_data = {
             'request_id': request_id,
             'completions': completions
-        }, room=sid)
+        }
+        logger.info(f"🏠 About to emit response: {response_data}")
+        
+        from ipuppy_notebooks.main import sio
+        await sio.emit('file_completion_response', response_data, room=sid)
         logger.info(f"Sent file completion response for request {request_id}")
         
     except Exception as e:
@@ -516,19 +523,30 @@ def get_file_completions(partial_path: str) -> list:
             path_obj = Path('.')
         else:
             # Expand home directory (~) if present
+            original_path = partial_path
             if partial_path.startswith('~/'):
+                logger.info(f"🏠 Expanding home directory: '{partial_path}' -> '{str(Path.home() / partial_path[2:])}'")
                 partial_path = str(Path.home() / partial_path[2:])
             elif partial_path == '~':
+                logger.info(f"🏠 Expanding home directory: '{partial_path}' -> '{str(Path.home())}'")
                 partial_path = str(Path.home())
             
             # Handle relative paths
             path_obj = Path(partial_path)
         
-        # If the path ends with a separator, we're looking for contents of a directory
-        if partial_path.endswith('/') or partial_path.endswith('\\'):
+        # Special case: if original path was ~/  we want contents of home directory
+        if 'original_path' in locals() and (original_path == '~/' or original_path == '~'):
+            search_dir = Path(partial_path)  # This is the expanded home directory
+            if not search_dir.exists() or not search_dir.is_dir():
+                return []
+            partial_name = ""  # We want all contents of this directory
+            logger.info(f"🏠 Home directory case: searching in {search_dir}")
+        # If the path ends with a separator, we're looking for contents of a directory  
+        elif partial_path.endswith('/') or partial_path.endswith('\\'):
             search_dir = path_obj if path_obj.is_absolute() else Path.cwd() / path_obj
             if not search_dir.exists() or not search_dir.is_dir():
                 return []
+            partial_name = ""  # We want all contents of this directory
         else:
             # If not, we're looking for files/dirs that match the partial name
             search_dir = path_obj.parent if path_obj.parent else Path('.')
@@ -540,14 +558,19 @@ def get_file_completions(partial_path: str) -> list:
         
         # Get all items in the directory
         items = list(search_dir.iterdir())
+        logger.info(f"🏠 Found {len(items)} items in directory: {search_dir}")
         
-        # Filter items based on partial name if we're not looking for directory contents
-        if not (partial_path.endswith('/') or partial_path.endswith('\\')) and partial_name:
+        # Filter items based on partial name
+        if partial_name:
             items = [item for item in items if item.name.startswith(partial_name)]
+            logger.info(f"🏠 After filtering by '{partial_name}': {len(items)} items")
+        else:
+            logger.info(f"🏠 No filtering needed, showing all {len(items)} items")
         
         # Format completions as relative paths from current directory
         completions = []
         cwd = Path.cwd()
+        logger.info(f"🏠 Current working directory: {cwd}")
         
         for item in items:
             try:
@@ -559,12 +582,16 @@ def get_file_completions(partial_path: str) -> list:
                     completions.append(str(rel_path) + '/')
                 else:
                     completions.append(str(rel_path))
+                logger.info(f"🏠 Added relative path: {str(rel_path)}")
             except ValueError:
                 # If item is not relative to cwd, just use its name
                 if item.is_dir():
                     completions.append(item.name + '/')
                 else:
                     completions.append(item.name)
+                logger.info(f"🏠 Added item name (not relative): {item.name}")
+        
+        logger.info(f"🏠 Final completions: {completions}")
         
         return completions
     

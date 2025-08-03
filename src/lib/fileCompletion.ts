@@ -30,7 +30,17 @@ function isInFilePathContext(context: CompletionContext): boolean {
     'with open(', 'os.path', 'glob.glob(', 'import', 'from'
   ];
   
-  return filePatterns.some(pattern => surroundingText.includes(pattern));
+  // Also check if the string itself looks like a path (starts with ./, ../, ~/, or /)
+  const stringContent = doc.sliceString(stringNode.from, stringNode.to);
+  const pathPattern = /^["']([.~\/]|[a-zA-Z]:[\\\/])/; // Matches "./", "../", "~/", "/", "C:\"
+  const looksLikePath = pathPattern.test(stringContent);
+  
+  console.log('📁 String content:', stringContent, 'looks like path:', looksLikePath);
+  
+  const hasFilePattern = filePatterns.some(pattern => surroundingText.includes(pattern));
+  console.log('📁 Has file pattern:', hasFilePattern, 'patterns found:', filePatterns.filter(p => surroundingText.includes(p)));
+  
+  return hasFilePattern || looksLikePath;
 }
 
 /**
@@ -130,14 +140,17 @@ export async function filePathCompletion(context: CompletionContext, socket: any
         
         // Handle home directory expansion for replacement range
         let replacementStart = context.pos;
+        console.log('🏠 File completion debug:', { partialPath, contextPos: context.pos });
+        
         if (partialPath.startsWith('~/')) {
-          // Replace from the start of ~/
-          const tildeIndex = partialPath.indexOf('~/');
-          replacementStart = context.pos - (partialPath.length - tildeIndex);
+          // Replace the entire ~/ path
+          replacementStart = context.pos - partialPath.length;
+          console.log('🏠 Home dir detected, replacement start:', replacementStart);
         } else {
           // Normal case - just replace the filename part
           const fileName = partialPath.split('/').pop() || '';
           replacementStart = context.pos - fileName.length;
+          console.log('🏠 Normal path, fileName:', fileName, 'replacement start:', replacementStart);
         }
         
         const from = replacementStart;

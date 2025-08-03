@@ -17,7 +17,6 @@ interface NotebookContainerProps {
   onMoveCellDown: (index: number) => void;
   onFocusNextCell: (index: number) => void;
   pythonCompletion: any;
-  socket: any;
   cleanAnsiCodes: (text: string) => string;
 }
 
@@ -35,7 +34,6 @@ export const NotebookContainer = ({
   onMoveCellDown,
   onFocusNextCell,
   pythonCompletion,
-  socket,
   cleanAnsiCodes
 }: NotebookContainerProps) => {
   if (!currentNotebook) {
@@ -66,7 +64,6 @@ export const NotebookContainer = ({
           canMoveUp={idx > 0}
           canMoveDown={idx < notebookContent.length - 1}
           pythonCompletion={pythonCompletion}
-          socket={socket}
           cleanAnsiCodes={cleanAnsiCodes}
         />
       ))}

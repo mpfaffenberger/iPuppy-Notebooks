@@ -9,7 +9,6 @@ import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
 import { searchKeymap } from '@codemirror/search';
-import { filePathCompletion } from '../lib/fileCompletion';
 import { marked } from 'marked';
 import type { NotebookCell as CellType, NotebookCellOutput } from './types';
 
@@ -28,7 +27,6 @@ interface NotebookCellProps {
   canMoveUp: boolean;
   canMoveDown: boolean;
   pythonCompletion: any; // Type from CodeMirror
-  socket: any; // Socket.IO instance
   cleanAnsiCodes: (text: string) => string;
 }
 
@@ -121,7 +119,6 @@ export const NotebookCell = ({
   canMoveUp,
   canMoveDown,
   pythonCompletion,
-  socket,
   cleanAnsiCodes
 }: NotebookCellProps) => {
   
@@ -396,14 +393,7 @@ export const NotebookCell = ({
             height={isContentExpanded ? "auto" : "200px"}
             extensions={[
               python(),
-              autocompletion({ override: [pythonCompletion, (context) => {
-                // Use socket from props scope, but add a check to prevent errors
-                if (!socket) {
-                  console.warn('Socket not available for file completion');
-                  return null;
-                }
-                return filePathCompletion(context, socket);
-              }] }),
+              autocompletion({ override: [pythonCompletion] }),
               // Essential keymaps (Tab is handled by our custom interceptor)
               keymap.of(completionKeymap),
               keymap.of(defaultKeymap.filter(binding => binding.key !== 'Tab')),

@@ -97,6 +97,10 @@ class CodeExecutor:
     
     async def get_completions(self, kernel_id: str, code: str, cursor_pos: int) -> list:
         """Get code completions from the global kernel"""
+        # Check if we're completing a file path with home directory
+        if self._is_home_directory_completion(code, cursor_pos):
+            return await self._get_file_completions_with_home_expansion(code, cursor_pos)
+        
         # Ensure the global kernel is running
         await kernel_manager.ensure_kernel_running()
         
@@ -148,6 +152,100 @@ class CodeExecutor:
         finally:
             # Cleanup
             kc.stop_channels()
+    
+    def _is_home_directory_completion(self, code: str, cursor_pos: int) -> bool:
+        """Check if we're trying to complete a file path that starts with ~/"""
+        try:
+            # Get text around cursor position
+            start = max(0, cursor_pos - 50)  # Look back up to 50 characters
+            end = min(len(code), cursor_pos + 10)  # Look forward up to 10 characters
+            context = code[start:end]
+            
+            # Check if we're inside a string containing ~/
+            import re
+            # Look for patterns like "~/ or '~/
+            pattern = r'["\']([^"\']*~\/[^"\']*)["\']?'
+            matches = re.finditer(pattern, context)
+            
+            for match in matches:
+                # Check if cursor is within this string
+                match_start = start + match.start()
+                match_end = start + match.end()
+                if match_start <= cursor_pos <= match_end and '~/' in match.group(1):
+                    return True
+            
+            return False
+        except Exception:
+            return False
+    
+    async def _get_file_completions_with_home_expansion(self, code: str, cursor_pos: int) -> dict:
+        """Get file completions with home directory expansion"""
+        try:
+            from pathlib import Path
+            import re
+            
+            # Extract the partial path from the string
+            start = max(0, cursor_pos - 50)
+            context = code[start:cursor_pos]
+            
+            # Find the string containing ~/
+            pattern = r'["\']([^"\']*~\/[^"\']*)'
+            match = re.search(pattern, context)
+            if not match:
+                return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
+            
+            partial_path = match.group(1)
+            
+            # Expand home directory
+            if partial_path.startswith('~/'):
+                expanded_path = str(Path.home() / partial_path[2:])
+            elif partial_path == '~':
+                expanded_path = str(Path.home())
+            else:
+                expanded_path = partial_path
+            
+            # Get completions
+            path_obj = Path(expanded_path)
+            
+            if partial_path.endswith('/') or partial_path == '~':
+                # List contents of directory
+                search_dir = path_obj
+                if not search_dir.exists() or not search_dir.is_dir():
+                    return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
+                items = list(search_dir.iterdir())
+                completions = []
+                for item in items:
+                    if item.is_dir():
+                        completions.append(item.name + '/')
+                    else:
+                        completions.append(item.name)
+            else:
+                # Complete partial filename
+                search_dir = path_obj.parent
+                if not search_dir.exists() or not search_dir.is_dir():
+                    return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
+                partial_name = path_obj.name
+                items = [item for item in search_dir.iterdir() if item.name.startswith(partial_name)]
+                completions = []
+                for item in items:
+                    if item.is_dir():
+                        completions.append(item.name + '/')
+                    else:
+                        completions.append(item.name)
+            
+            # Calculate cursor positions for replacement
+            cursor_start = cursor_pos - len(partial_path.split('/')[-1])
+            cursor_end = cursor_pos
+            
+            return {
+                'matches': completions,
+                'cursor_start': cursor_start,
+                'cursor_end': cursor_end
+            }
+            
+        except Exception as e:
+            print(f"Error in file completion: {e}")
+            return {'matches': [], 'cursor_start': cursor_pos, 'cursor_end': cursor_pos}
 
 # Global executor instance
 executor = CodeExecutor()
