@@ -35,3 +35,6 @@ Thumbs.db
 # Jupyter notebooks
 *.ipynb
 
+# iPuppy Notebooks runtime files
+kernels/
+
