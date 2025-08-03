@@ -115,7 +115,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
-# Import IPython display system
+# Import and configure IPython display system
 from IPython import get_ipython
 from IPython.display import display
 
@@ -123,6 +123,10 @@ from IPython.display import display
 ipython = get_ipython()
 if ipython is not None:
     ipython.run_line_magic('matplotlib', 'inline')
+    
+    # Test that LaTeX display works
+    from IPython.display import Math, Latex
+    print("IPython display system initialized")
 
 # Configure seaborn 
 try:

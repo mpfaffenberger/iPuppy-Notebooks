@@ -10,6 +10,7 @@ import { keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
 import { searchKeymap } from '@codemirror/search';
 import { marked } from 'marked';
+import katex from 'katex';
 import type { NotebookCell as CellType, NotebookCellOutput } from './types';
 
 // Component to handle Plotly HTML rendering with proper timing
@@ -42,6 +43,57 @@ const PlotlyHtmlRenderer = ({ html, style }: { html: string; style: React.CSSPro
   }, [html]);
 
   return <div ref={containerRef} style={style} />;
+};
+
+// Component to render LaTeX/math expressions
+const LaTeXRenderer = ({ latex, style }: { latex: string; style: React.CSSProperties }) => {
+  const [renderedHtml, setRenderedHtml] = React.useState<string>('');
+  const [error, setError] = React.useState<string>('');
+
+  React.useEffect(() => {
+    try {
+      // Clean the LaTeX string - remove any surrounding $ symbols if present
+      const cleanLatex = latex.replace(/^\$+|\$+$/g, '').trim();
+      
+      console.log('LaTeX input:', latex);
+      console.log('Cleaned LaTeX:', cleanLatex);
+      
+      // Render the LaTeX using KaTeX
+      const html = katex.renderToString(cleanLatex, {
+        throwOnError: false,
+        displayMode: true, // Use display mode for better formatting
+        colorIsTextColor: true,
+        strict: false
+      });
+      
+      console.log('Rendered HTML:', html);
+      setRenderedHtml(html);
+      setError('');
+    } catch (err) {
+      console.error('LaTeX rendering error:', err);
+      setError(`LaTeX Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setRenderedHtml('');
+    }
+  }, [latex]);
+
+  if (error) {
+    return (
+      <div style={{ ...style, color: '#ef4444' }}>
+        <div style={{ fontSize: '0.75rem', marginBottom: '4px' }}>LaTeX Rendering Error:</div>
+        <code>{error}</code>
+        <div style={{ fontSize: '0.75rem', marginTop: '4px', color: '#71717a' }}>
+          Raw LaTeX: {latex}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      style={style}
+      dangerouslySetInnerHTML={{ __html: renderedHtml }}
+    />
+  );
 };
 
 interface NotebookCellProps {
@@ -171,6 +223,26 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
       );
     }
 
+    // Handle LaTeX/math FIRST - check multiple possible MIME types
+    const latexMimeTypes = ['text/latex', 'application/x-latex', 'text/x-latex'];
+    for (const mimeType of latexMimeTypes) {
+      if (mimeType in outputData) {
+        return (
+          <LaTeXRenderer 
+            latex={outputData[mimeType]}
+            style={{
+              padding: '16px',
+              border: '1px solid #3f3f46',
+              borderRadius: '4px',
+              backgroundColor: '#27272a',
+              color: '#d4d4d8',
+              textAlign: 'center'
+            }}
+          />
+        );
+      }
+    }
+
     // Handle text/plain
     if ('text/plain' in outputData) {
       return (
@@ -198,23 +270,6 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
             lineHeight: '1.6'
           }}
         />
-      );
-    }
-
-    // Handle LaTeX/math
-    if ('text/latex' in outputData) {
-      return (
-        <div style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '0.875rem',
-          color: '#d4d4d8',
-          padding: '8px',
-          border: '1px solid #3f3f46',
-          borderRadius: '4px',
-          backgroundColor: '#27272a'
-        }}>
-          <code>LaTeX: {outputData['text/latex']}</code>
-        </div>
       );
     }
 
