@@ -1,75 +1,157 @@
-# iPuppy Notebooks 🐶
+# 🐶 iPuppy Notebooks 🐶
 
-A modern, dark-themed Jupyter notebook clone built with FastAPI and Jinja2 templates. No bloated IDEs or overpriced tools needed!
+**Agentic AI-Empowered Data Science for the Modern Era** 🚀🐕
 
-## Features
+A revolutionary notebook environment that combines the power of Jupyter-style computing with intelligent AI assistance. Built with FastAPI backend and React frontend, iPuppy Notebooks puts the fun back in data science! 🎉
 
-- Modern dark mode UI with purple accents
-- File system management (create, delete, save notebooks)
-- iPython kernel execution
-- Notebook cell creation and management
-- Bootstrap 5 powered responsive design
+## ✨ Features
 
-## Installation
+🐕 **Puppy Scientist AI Agent** - Your personal data science companion that helps analyze data, write code, and answer questions  
+🌙 **Modern Dark Theme** - Sleek monochromatic design with zinc color palette and JetBrains Mono fonts  
+⚡ **Real-time Execution** - WebSocket-powered code execution with instant feedback  
+📱 **Responsive Design** - Works beautifully on desktop and mobile  
+🔄 **Cell Management** - Create, reorder, expand, and manage code/markdown cells  
+⌨️ **Smart Shortcuts** - Shift+Enter to run cells and navigate seamlessly  
+💾 **Auto-Save** - Never lose your work (currently disabled to prevent server reloads)  
+🐍 **Python Kernel** - Full iPython kernel with autocomplete and rich output  
 
-1. Clone or download this repository
-2. Install [uv](https://docs.astral.sh/uv/) if you haven't already:
+## 🚀 Quick Start
 
-```bash
-pip install uv
+### Prerequisites 🐾
+- Python 3.8+
+- Node.js 16+
+- [uv](https://docs.astral.sh/uv/) package manager
+
+### Installation 📦
+
+1. **Clone the repository** 🐕
+   ```bash
+   git clone <repository-url>
+   cd iPuppy-Notebooks
+   ```
+
+2. **Backend Setup** 🐍
+   ```bash
+   # Install Python dependencies
+   uv pip install -r pyproject.toml
+   ```
+
+3. **Frontend Setup** ⚛️
+   ```bash
+   # Install Node dependencies
+   npm install
+   
+   # Build the React frontend
+   npm run build
+   ```
+
+### Launch 🚀
+
+1. **Start the FastAPI server** 🌐
+   ```bash
+   python main.py
+   ```
+
+2. **Open your browser** 🌍
+   Navigate to `http://localhost:8000` and start your data science journey! 🐶
+
+## 🎯 Usage Guide
+
+### Getting Started 🐾
+1. **Create a Notebook** - Click "create" in the sidebar and give your notebook a name
+2. **Add Cells** - Use the "add cell" button to create code or markdown cells
+3. **Run Code** - Press the 🚀 run button or use Shift+Enter to execute cells
+4. **Chat with Puppy Scientist** - Ask questions and get AI-powered assistance in the sidebar
+
+### Keyboard Shortcuts ⌨️
+- **Shift+Enter** - Execute current cell and move to next
+- **Cell Navigation** - Seamlessly move between cells after execution
+
+### Cell Types 📝
+- **Code Cells** - Execute Python code with full kernel support
+- **Markdown Cells** - Rich text formatting and documentation
+
+## 🏗️ Architecture
+
+```
+🐶 iPuppy Notebooks Architecture 🐶
+├── 🐍 Backend (FastAPI)
+│   ├── main.py                 # FastAPI server and WebSocket handling
+│   ├── ipuppy_notebooks/       # Core notebook functionality
+│   └── notebooks/              # Stored notebook files
+├── ⚛️ Frontend (React + TypeScript)
+│   ├── src/
+│   │   ├── components/         # React components
+│   │   │   ├── Header.tsx      # Top navigation with kernel status
+│   │   │   ├── Sidebar.tsx     # Notebooks + Puppy Scientist
+│   │   │   ├── NotebookCell.tsx # Individual cell component
+│   │   │   └── NotebookContainer.tsx # Main notebook view
+│   │   ├── App.tsx            # Main application logic
+│   │   └── main.tsx           # React entry point
+│   └── public/
+│       └── puppy.svg          # Custom puppy favicon 🐕
 ```
 
-3. Install the required dependencies:
+## 🎨 Design Philosophy
 
-```bash
-uv pip install -r pyproject.toml
-```
+iPuppy Notebooks embraces a **modern monochromatic aesthetic** with:
+- 🎨 Zinc color palette (grey variants only)
+- 🔤 JetBrains Mono monospace typography
+- 🌙 Dark theme optimized for long coding sessions
+- ✨ Subtle animations and clean interfaces
+- 🐕 Playful puppy branding throughout
 
-## Usage
+## 🤖 AI Agent Integration
 
-1. Start the server:
+The **Puppy Scientist** 🐕‍🦺 is your intelligent companion that can:
+- 📊 Analyze your data and suggest insights
+- 💻 Help write and debug Python code
+- 📖 Explain complex concepts and libraries
+- 🔍 Answer questions about your notebooks
+- 🚀 Suggest optimizations and best practices
 
-```bash
-python main.py
-```
+*Currently simulated - full AI integration coming soon!* 🎯
 
-2. Open your browser and navigate to `http://localhost:8000`
+## 🛣️ Roadmap
 
-3. Create a new notebook or open an existing one
+### Phase 1: Foundation ✅
+- [x] Modern React + TypeScript frontend
+- [x] FastAPI backend with WebSocket support
+- [x] Cell management and execution
+- [x] Keyboard shortcuts and navigation
+- [x] Modern UI/UX design
 
-4. Start a kernel to execute code cells
+### Phase 2: AI Integration 🚧
+- [ ] Real Puppy Scientist AI agent
+- [ ] Code completion and suggestions
+- [ ] Intelligent error handling
+- [ ] Data analysis automation
 
-## Project Structure
+### Phase 3: Advanced Features 🔮
+- [ ] Collaborative editing
+- [ ] Version control integration
+- [ ] Plugin system
+- [ ] Advanced visualization tools
+- [ ] Export to various formats
 
-```
-├── main.py              # FastAPI application
-├── requirements.txt     # Python dependencies
-├── templates/           # Jinja2 HTML templates
-│   ├── base.html        # Base template with layout
-│   └── index.html       # Main notebook interface
-├── static/              # Static assets
-│   ├── css/style.css    # Custom styling
-│   └── js/main.js       # Frontend JavaScript
-├── notebooks/           # Notebook files storage
-├── kernels/            # Kernel management modules
-│   ├── manager.py       # Kernel lifecycle management
-│   └── executor.py      # Code execution functionality
-```
+## 🤝 Contributing
 
-## Future Enhancements
+Want to help make iPuppy Notebooks even better? We'd love your contributions! 🐕
 
-- Integrate with code-puppy for AI-assisted data science
-- Add Markdown cell rendering
-- Implement cell reordering and deletion
-- Add support for multiple kernels
-- Create a more robust notebook saving mechanism
+1. Fork the repository
+2. Create a feature branch
+3. Make your improvements
+4. Submit a pull request
 
-## License
+## 📄 License
 
-MIT License
+MIT License - Feel free to use iPuppy Notebooks for your data science adventures! 🐾
 
-## Author
+## 🐕 About the Creator
 
-Created by Michael Pfaffenberger on a rainy weekend in May 2025 to solve the problems of heavy IDEs and expensive tools like Windsurf and Cursor.
+Created with ❤️ by **Michael Pfaffenberger** to revolutionize how we approach data science. No more bloated IDEs or expensive proprietary tools - just pure, puppy-powered productivity! 🐶✨
 
-*iPuppy Notebooks is powered by code-puppy, your sassy, playful open-source AI code agent!*
+---
+
+**Ready to unleash your data science potential?** 🐕🚀  
+*Woof woof! Let's analyze some data together!* 🐾📊
