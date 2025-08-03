@@ -4,7 +4,7 @@ import shlex
 import os
 import logging
 from pathlib import Path
-from typing import Set
+from typing import Set, Dict, Any, Optional
 import socketio
 from ipuppy_notebooks.kernels.manager import kernel_manager
 
@@ -15,13 +15,20 @@ class SocketIOManager:
     def __init__(self):
         # Set of Socket.IO session IDs for the global kernel
         self.connections: Set[str] = set()
+        # Dictionary to store response futures for read requests
+        self.response_futures: Dict[str, Dict[str, asyncio.Future]] = {}
     
     def connect(self, sid: str):
         self.connections.add(sid)
+        # Initialize response futures dict for this connection
+        self.response_futures[sid] = {}
         logger.info(f"Socket.IO connected: {sid} (total connections: {len(self.connections)})")
     
     def disconnect(self, sid: str):
         self.connections.discard(sid)
+        # Clean up response futures for this connection
+        if sid in self.response_futures:
+            del self.response_futures[sid]
         logger.info(f"Socket.IO disconnected: {sid} (total connections: {len(self.connections)})")
     
     async def broadcast(self, event: str, data: dict):
@@ -33,6 +40,54 @@ class SocketIOManager:
                 except Exception as e:
                     logger.error(f"Error sending message to Socket.IO client {sid}: {e}")
                     self.connections.discard(sid)
+    
+    async def send_request_to_client(self, event: str, data: dict, sid: str) -> Optional[Any]:
+        """Send a request to a specific client and wait for a response."""
+        if sid not in self.connections:
+            logger.warning(f"Client {sid} not connected, cannot send request")
+            return None
+            
+        try:
+            # Generate a unique request ID
+            request_id = f"{event}_{id(data)}_{int(asyncio.get_event_loop().time() * 1000)}"
+            data_with_id = {**data, "request_id": request_id}
+            
+            # Create a future to wait for the response
+            loop = asyncio.get_event_loop()
+            future = loop.create_future()
+            
+            # Store the future
+            if sid not in self.response_futures:
+                self.response_futures[sid] = {}
+            self.response_futures[sid][request_id] = future
+            
+            # Send the request
+            from ipuppy_notebooks.main import sio
+            await sio.emit(event, data_with_id, room=sid)
+            logger.info(f"Sent request {request_id} to client {sid}")
+            
+            # Wait for the response (with a timeout)
+            try:
+                result = await asyncio.wait_for(future, timeout=5.0)
+                logger.info(f"Received response for request {request_id}")
+                return result
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout waiting for response to request {request_id}")
+                return None
+        except Exception as e:
+            logger.error(f"Error sending request to client {sid}: {e}")
+            return None
+    
+    def handle_client_response(self, sid: str, request_id: str, response_data: Any):
+        """Handle a response from a client for a previous request."""
+        if sid in self.response_futures and request_id in self.response_futures[sid]:
+            future = self.response_futures[sid][request_id]
+            if not future.done():
+                future.set_result(response_data)
+            # Clean up the future
+            del self.response_futures[sid][request_id]
+        else:
+            logger.warning(f"No pending request found for response {request_id} from client {sid}")
 
 socketio_manager = SocketIOManager()
 
@@ -406,3 +461,21 @@ async def handle_execute_code(sid, data):
         await sio.emit('error', {
             'message': f'Server error: {str(e)}'
         }, room=sid)
+
+async def handle_read_cell_input_response(sid, data):
+    """Handle response from frontend for read_cell_input request."""
+    request_id = data.get('request_id')
+    content = data.get('content', '')
+    if request_id:
+        socketio_manager.handle_client_response(sid, request_id, content)
+    else:
+        logger.warning("Received read_cell_input_response without request_id")
+
+async def handle_read_cell_output_response(sid, data):
+    """Handle response from frontend for read_cell_output request."""
+    request_id = data.get('request_id')
+    outputs = data.get('outputs', [])
+    if request_id:
+        socketio_manager.handle_client_response(sid, request_id, outputs)
+    else:
+        logger.warning("Received read_cell_output_response without request_id")

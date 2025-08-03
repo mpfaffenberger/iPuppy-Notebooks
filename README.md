@@ -63,6 +63,32 @@ A revolutionary notebook environment that combines the power of Jupyter-style co
 3. **Run Code** - Press the 🚀 run button or use Shift+Enter to execute cells
 4. **Chat with Puppy Scientist** - Ask questions and get AI-powered assistance in the sidebar
 
+### Backend Operations 🐕
+
+iPuppy Notebooks now supports triggering frontend operations directly from the backend! The following operations can be initiated server-side:
+
+- `add_new_cell(cell_index, cell_type, content)` - Add a new cell at the specified index
+- `delete_cell(cell_index)` - Delete a cell at the specified index
+- `alter_cell_content(cell_index, content)` - Modify the content of a cell
+- `execute_cell(cell_index, code)` - Execute a cell at the specified index
+- `swap_cell_type(cell_index, new_type)` - Toggle a cell between code and markdown
+- `move_cell(cell_index, new_index)` - Move a cell to a new position
+- `read_cell_input(cell_index, sid)` - Read the input content of a cell (requires client session ID)
+- `read_cell_output(cell_index, sid)` - Read the output content of a cell (requires client session ID)
+
+To use these functions, simply import them:
+
+```python
+from ipuppy_notebooks import add_new_cell, delete_cell, alter_cell_content
+
+# Example usage
+add_new_cell(0, "code", "print('Hello from the backend!')")
+delete_cell(1)
+alter_cell_content(2, "x = 42\nprint(x)")
+```
+
+These operations will broadcast events via Socket.IO to all connected frontend clients, enabling real-time synchronization of notebook state across all devices.
+
 ### Keyboard Shortcuts ⌨️
 - **Shift+Enter** - Execute current cell and move to next
 - **Cell Navigation** - Seamlessly move between cells after execution

@@ -1,0 +1,199 @@
+"""
+Frontend operations that can be triggered from the backend.
+These functions send events via Socket.IO to trigger actions in the frontend.
+"""
+
+import asyncio
+import logging
+from typing import Optional, Any, List
+
+from .socket_handlers import socketio_manager, execute_code_streaming
+
+logger = logging.getLogger(__name__)
+
+
+def add_new_cell(cell_index: int, cell_type: str = "code", content: str = ""):
+    """
+    Add a new cell at the specified index.
+    
+    Args:
+        cell_index (int): The index where the new cell should be inserted
+        cell_type (str): Type of cell - either "code" or "markdown"
+        content (str): Initial content of the cell
+    """
+    data = {
+        "cell_index": cell_index,
+        "cell_type": cell_type,
+        "content": content
+    }
+    
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(socketio_manager.broadcast("add_cell", data))
+    except RuntimeError:
+        # No running loop, create a new one
+        asyncio.run(socketio_manager.broadcast("add_cell", data))
+
+
+def delete_cell(cell_index: int):
+    """
+    Delete a cell at the specified index.
+    
+    Args:
+        cell_index (int): The index of the cell to delete
+    """
+    data = {"cell_index": cell_index}
+    
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(socketio_manager.broadcast("delete_cell", data))
+    except RuntimeError:
+        # No running loop, create a new one
+        asyncio.run(socketio_manager.broadcast("delete_cell", data))
+
+
+def alter_cell_content(cell_index: int, content: str):
+    """
+    Alter the content of a cell at the specified index.
+    
+    Args:
+        cell_index (int): The index of the cell to modify
+        content (str): New content for the cell
+    """
+    data = {
+        "cell_index": cell_index,
+        "content": content
+    }
+    
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(socketio_manager.broadcast("alter_cell_content", data))
+    except RuntimeError:
+        # No running loop, create a new one
+        asyncio.run(socketio_manager.broadcast("alter_cell_content", data))
+
+
+def execute_cell(cell_index: int, code: str):
+    """
+    Execute a cell at the specified index with the given code.
+    
+    Args:
+        cell_index (int): The index of the cell to execute
+        code (str): The code to execute in the cell
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(execute_code_streaming(cell_index, code))
+    except RuntimeError:
+        # No running loop, create a new one
+        asyncio.run(execute_code_streaming(cell_index, code))
+
+
+def swap_cell_type(cell_index: int, new_type: str):
+    """
+    Swap a cell between code and markdown types.
+    
+    Args:
+        cell_index (int): The index of the cell to swap
+        new_type (str): The new type for the cell - either "code" or "markdown"
+    """
+    data = {
+        "cell_index": cell_index,
+        "new_type": new_type
+    }
+    
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(socketio_manager.broadcast("swap_cell_type", data))
+    except RuntimeError:
+        # No running loop, create a new one
+        asyncio.run(socketio_manager.broadcast("swap_cell_type", data))
+
+
+def move_cell(cell_index: int, new_index: int):
+    """
+    Move a cell from one index to another.
+    
+    Args:
+        cell_index (int): The current index of the cell
+        new_index (int): The new index for the cell
+    """
+    data = {
+        "cell_index": cell_index,
+        "new_index": new_index
+    }
+    
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(socketio_manager.broadcast("move_cell", data))
+    except RuntimeError:
+        # No running loop, create a new one
+        asyncio.run(socketio_manager.broadcast("move_cell", data))
+
+
+def read_cell_input(cell_index: int, sid: str) -> Optional[str]:
+    """
+    Read the input content of a cell at the specified index.
+    
+    Args:
+        cell_index (int): The index of the cell to read
+        sid (str): The Socket.IO session ID of the client to request from
+        
+    Returns:
+        Optional[str]: The input content of the cell, or None if failed
+    """
+    data = {"cell_index": cell_index}
+    
+    try:
+        loop = asyncio.get_running_loop()
+        # Create a task to send the request and wait for response
+        future = asyncio.run_coroutine_threadsafe(
+            socketio_manager.send_request_to_client("read_cell_input_request", data, sid), 
+            loop
+        )
+        result = future.result(timeout=5.0)
+        return result
+    except RuntimeError:
+        # No running loop, create a new one
+        async def _read_input():
+            return await socketio_manager.send_request_to_client("read_cell_input_request", data, sid)
+        
+        result = asyncio.run(_read_input())
+        return result
+    except Exception as e:
+        logger.error(f"Error reading cell input at index {cell_index}: {e}")
+        return None
+
+
+def read_cell_output(cell_index: int, sid: str) -> Optional[List[Any]]:
+    """
+    Read the output content of a cell at the specified index.
+    
+    Args:
+        cell_index (int): The index of the cell to read
+        sid (str): The Socket.IO session ID of the client to request from
+        
+    Returns:
+        Optional[List[Any]]: The output content of the cell, or None if failed
+    """
+    data = {"cell_index": cell_index}
+    
+    try:
+        loop = asyncio.get_running_loop()
+        # Create a task to send the request and wait for response
+        future = asyncio.run_coroutine_threadsafe(
+            socketio_manager.send_request_to_client("read_cell_output_request", data, sid), 
+            loop
+        )
+        result = future.result(timeout=5.0)
+        return result
+    except RuntimeError:
+        # No running loop, create a new one
+        async def _read_output():
+            return await socketio_manager.send_request_to_client("read_cell_output_request", data, sid)
+        
+        result = asyncio.run(_read_output())
+        return result
+    except Exception as e:
+        logger.error(f"Error reading cell output at index {cell_index}: {e}")
+        return None

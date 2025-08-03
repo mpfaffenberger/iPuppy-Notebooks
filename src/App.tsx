@@ -191,6 +191,41 @@ function App() {
       handleSocketMessage(data);
     });
     
+    socketInstance.on('add_cell', (data) => {
+      console.log('Socket.IO add_cell received:', data);
+      handleAddCellMessage(data);
+    });
+    
+    socketInstance.on('delete_cell', (data) => {
+      console.log('Socket.IO delete_cell received:', data);
+      handleDeleteCellMessage(data);
+    });
+    
+    socketInstance.on('alter_cell_content', (data) => {
+      console.log('Socket.IO alter_cell_content received:', data);
+      handleAlterCellContentMessage(data);
+    });
+    
+    socketInstance.on('swap_cell_type', (data) => {
+      console.log('Socket.IO swap_cell_type received:', data);
+      handleSwapCellTypeMessage(data);
+    });
+    
+    socketInstance.on('move_cell', (data) => {
+      console.log('Socket.IO move_cell received:', data);
+      handleMoveCellMessage(data);
+    });
+    
+    socketInstance.on('read_cell_input_request', (data) => {
+      console.log('Socket.IO read_cell_input_request received:', data);
+      handleReadCellInputRequest(data, socketInstance);
+    });
+    
+    socketInstance.on('read_cell_output_request', (data) => {
+      console.log('Socket.IO read_cell_output_request received:', data);
+      handleReadCellOutputRequest(data, socketInstance);
+    });
+    
     socketInstance.on('error', (data) => {
       console.error('Socket.IO error:', data);
       showAlert(`Socket.IO error: ${data.message}`, 'error');
@@ -243,6 +278,91 @@ function App() {
           }
           return newContent;
         });
+      }
+    }
+  };
+
+  const handleAddCellMessage = (data: any) => {
+    const { cell_index, cell_type, content } = data;
+    if (typeof cell_index === 'number') {
+      setNotebookContent(prev => {
+        const newContent = [...prev];
+        // Insert new cell at the specified index
+        newContent.splice(cell_index, 0, { 
+          cell_type: cell_type || 'code', 
+          source: [content || ''], 
+          outputs: [] 
+        });
+        return newContent;
+      });
+    }
+  };
+
+  const handleDeleteCellMessage = (data: any) => {
+    const { cell_index } = data;
+    if (typeof cell_index === 'number') {
+      setNotebookContent(prev => prev.filter((_, i) => i !== cell_index));
+    }
+  };
+
+  const handleAlterCellContentMessage = (data: any) => {
+    const { cell_index, content } = data;
+    if (typeof cell_index === 'number' && typeof content === 'string') {
+      updateCell(cell_index, { source: [content] });
+    }
+  };
+
+  const handleSwapCellTypeMessage = (data: any) => {
+    const { cell_index, new_type } = data;
+    if (typeof cell_index === 'number' && (new_type === 'code' || new_type === 'markdown')) {
+      updateCell(cell_index, { cell_type: new_type });
+      
+      // If swapping to markdown, exit edit mode for that cell
+      if (new_type === 'markdown') {
+        setEditingMarkdownCells(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(cell_index);
+          return newSet;
+        });
+      }
+    }
+  };
+
+  const handleMoveCellMessage = (data: any) => {
+    const { cell_index, new_index } = data;
+    if (typeof cell_index === 'number' && typeof new_index === 'number') {
+      setNotebookContent(prev => {
+        const newContent = [...prev];
+        // Move cell from cell_index to new_index
+        const [movedCell] = newContent.splice(cell_index, 1);
+        newContent.splice(new_index, 0, movedCell);
+        return newContent;
+      });
+    }
+  };
+
+  const handleReadCellInputRequest = (data: any, socket: Socket) => {
+    const { cell_index, request_id } = data;
+    if (typeof cell_index === 'number' && request_id) {
+      const cell = notebookContent[cell_index];
+      if (cell) {
+        const content = cell.source.join('');
+        socket.emit('read_cell_input_response', { request_id, content });
+      } else {
+        socket.emit('read_cell_input_response', { request_id, content: '' });
+      }
+    }
+  };
+
+  const handleReadCellOutputRequest = (data: any, socket: Socket) => {
+    const { cell_index, request_id } = data;
+    if (typeof cell_index === 'number' && request_id) {
+      const cell = notebookContent[cell_index];
+      if (cell) {
+        const outputs = cell.outputs || [];
+        socket.emit('read_cell_output_response', { request_id, outputs });
+      } else {
+        socket.emit('read_cell_output_response', { request_id, outputs: [] });
       }
     }
   };
