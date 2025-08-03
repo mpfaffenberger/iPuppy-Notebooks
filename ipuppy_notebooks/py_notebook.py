@@ -40,9 +40,19 @@ def load_py_notebook(path: Path) -> Dict[str, object]:
     cells: List[Cell] = []
     current_lines: List[str] = []
     current_type: Literal["code", "markdown"] = "code"
+    in_markdown_quotes = False
 
     def _flush():
         if current_lines:
+            # For markdown cells, remove the triple quotes wrapper
+            if current_type == "markdown":
+                # Remove opening triple quotes if present
+                if current_lines and current_lines[0].strip() == '"""':
+                    current_lines.pop(0)
+                # Remove closing triple quotes if present
+                if current_lines and current_lines[-1].strip() == '"""':
+                    current_lines.pop()
+            
             cells.append({
                 "cell_type": current_type,
                 "source": current_lines.copy(),
@@ -55,8 +65,28 @@ def load_py_notebook(path: Path) -> Dict[str, object]:
             # start new cell
             _flush()
             current_type = _parse_delimiter(line)
+            in_markdown_quotes = False
             continue  # delimiter itself not included
-        current_lines.append(line)
+        
+        # Handle triple quotes for markdown cells
+        if current_type == "markdown":
+            stripped_line = line.strip()
+            if stripped_line == '"""':
+                if not in_markdown_quotes:
+                    # Opening triple quotes - start collecting markdown content
+                    in_markdown_quotes = True
+                    continue  # Don't include the opening quotes
+                else:
+                    # Closing triple quotes - end of markdown content
+                    in_markdown_quotes = False
+                    continue  # Don't include the closing quotes
+            elif in_markdown_quotes:
+                # We're inside triple quotes, collect the content
+                current_lines.append(line)
+            # If we haven't seen opening quotes yet, skip until we do
+        else:
+            # Regular code cell
+            current_lines.append(line)
 
     _flush()  # last cell
 
@@ -76,10 +106,16 @@ def dump_py_notebook(notebook: Dict[str, object]) -> str:
         cell_type: str = str(cell.get("cell_type", "code"))
         if cell_type == "markdown":
             lines.append("# %% [markdown]\n")
+            # Wrap markdown content in triple quotes to make it valid Python
+            lines.append('"""\n')
             # convert markdown lines: make sure each ends with newline
             for l in cell.get("source", []):
                 # markdown lines already include newlines in our UI
                 lines.append(l)
+            # Close the triple quotes
+            if not lines[-1].endswith('\n'):
+                lines.append('\n')
+            lines.append('"""\n')
         else:
             lines.append("# %%\n")
             for l in cell.get("source", []):
