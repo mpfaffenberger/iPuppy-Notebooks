@@ -32,6 +32,6 @@ Thumbs.db
 
 # iPuppy Notebooks runtime files
 /kernels/
-ipuppy_notebooks/compiled_ui/
 build/
 dist/
+ipuppy_notebooks/compiled_ui/
