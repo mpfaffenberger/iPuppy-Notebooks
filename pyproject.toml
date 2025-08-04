@@ -33,6 +33,10 @@ dependencies = [
     "python-socketio>=5.13.0",
     "code-puppy>=0.0.77",
     "pydantic-ai>=0.0.1",
+    "plotly>=6.2.0",
+    "numpy>=2.2.6",
+    "matplotlib>=3.10.5",
+    "seaborn>=0.13.2",
 ]
 
 [project.scripts]
