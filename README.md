@@ -20,11 +20,33 @@ A revolutionary notebook environment that combines the power of Jupyter-style co
 
 ## 🚀 Quick Start
 
-### Prerequisites 🐾
-- Python 3.8+
+### How to Run 🏃‍♂️
+
+The fastest way to get iPuppy Notebooks running:
+
+1. **Set up your API keys** 🔑
+   ```bash
+   export OPENAI_API_KEY="your-openai-api-key"
+   export GEMINI_API_KEY="your-gemini-api-key"
+   export ANTHROPIC_API_KEY="your-anthropic-api-key"
+   # Add any other AI provider keys you want to use
+   ```
+
+2. **Run with uvx** ⚡
+   ```bash
+   uvx ipuppy-notebooks
+   ```
+
+That's it! iPuppy Notebooks will start and be available at `http://localhost:8000` 🐶
+
+### Development Setup 🛠️
+
+For development or if you prefer to build from source:
+
+#### Prerequisites 🐾
+- Python 3.10+
 - Node.js 16+
 - [uv](https://docs.astral.sh/uv/) package manager
-- [code_puppy](https://github.com/anthropics/code_puppy) for AI model management (for full agent functionality)
 
 ### Installation 📦
 
