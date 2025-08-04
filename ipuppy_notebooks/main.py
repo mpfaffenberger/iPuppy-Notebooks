@@ -35,8 +35,12 @@ app = FastAPI(
     redoc_url="/api/v1/redoc",
 )
 
+# Get package directory for static files
+package_dir = Path(__file__).parent
+static_dir = package_dir / "build"
+
 templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
-app.mount("/assets", StaticFiles(directory="build/assets"), name="assets")
+app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
 
 # Create directories if they don't exist
 os.makedirs("kernels", exist_ok=True)
@@ -105,7 +109,7 @@ async def old_app(request: Request):
 # Alternative way to serve the React app's index.html directly
 @app.get("/react")
 async def react_index():
-    with open("build/index.html", "r") as f:
+    with open(static_dir / "index.html", "r") as f:
         content = f.read()
     return Response(content=content, media_type="text/html")
 
@@ -436,7 +440,7 @@ async def save_notebook(notebook_name: str, request: Request):
 
 
 # Mount the React app's static files at root - MUST be before Socket.IO wrapping
-app.mount("/", StaticFiles(directory="build", html=True), name="react_app")
+app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="react_app")
 
 # Mount Socket.IO with FastAPI - this creates the final ASGI app
 socket_app = socketio.ASGIApp(sio, app)
