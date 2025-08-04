@@ -53,7 +53,6 @@ build-backend = "hatchling.build"
 packages = ["ipuppy_notebooks"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"build" = "ipuppy_notebooks/build"
 "README.md" = "README.md"
 "LICENSE" = "LICENSE"
 
@@ -61,6 +60,13 @@ packages = ["ipuppy_notebooks"]
 include = [
     "ipuppy_notebooks/",
     "build/",
+    "src/",
+    "public/",
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "tsconfig*.json",
+    "index.html",
     "README.md",
     "LICENSE",
     "pyproject.toml"

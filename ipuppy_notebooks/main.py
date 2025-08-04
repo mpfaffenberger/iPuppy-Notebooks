@@ -39,7 +39,6 @@ app = FastAPI(
 package_dir = Path(__file__).parent
 static_dir = package_dir / "build"
 
-templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
 app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
 
 # Create directories if they don't exist
@@ -99,11 +98,6 @@ async def startup_event():
 async def shutdown_event():
     logger.info("Shutting down iPuppy Notebooks application...")
     await kernel_manager.shutdown()
-
-
-@app.get("/old_app")
-async def old_app(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
 
 
 # Alternative way to serve the React app's index.html directly
