@@ -10,20 +10,13 @@ Anything between two delimiters (or delimiter to EOF) is that cell's source.
 The returned structure is compatible with Jupyter "notebook" cell dicts but
 only uses the subset our UI needs: ``cell_type``, ``source`` and ``outputs``.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Dict, Literal
 
 # Import the new frontend operations functions
-from .frontend_operations import (
-    add_new_cell,
-    delete_cell,
-    alter_cell_content,
-    execute_cell,
-    swap_cell_type,
-    move_cell
-)
 
 Cell = Dict[str, object]
 
@@ -62,12 +55,14 @@ def load_py_notebook(path: Path) -> Dict[str, object]:
                 # Remove closing triple quotes if present
                 if current_lines and current_lines[-1].strip() == '"""':
                     current_lines.pop()
-            
-            cells.append({
-                "cell_type": current_type,
-                "source": current_lines.copy(),
-                "outputs": []
-            })
+
+            cells.append(
+                {
+                    "cell_type": current_type,
+                    "source": current_lines.copy(),
+                    "outputs": [],
+                }
+            )
             current_lines.clear()
 
     for line in text:
@@ -77,7 +72,7 @@ def load_py_notebook(path: Path) -> Dict[str, object]:
             current_type = _parse_delimiter(line)
             in_markdown_quotes = False
             continue  # delimiter itself not included
-        
+
         # Handle triple quotes for markdown cells
         if current_type == "markdown":
             stripped_line = line.strip()
@@ -123,8 +118,8 @@ def dump_py_notebook(notebook: Dict[str, object]) -> str:
                 # markdown lines already include newlines in our UI
                 lines.append(l)
             # Close the triple quotes
-            if not lines[-1].endswith('\n'):
-                lines.append('\n')
+            if not lines[-1].endswith("\n"):
+                lines.append("\n")
             lines.append('"""\n')
         else:
             lines.append("# %%\n")

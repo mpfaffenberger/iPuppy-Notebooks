@@ -16,13 +16,14 @@ The Fourier Transform is basically a mathematical way to break down ANY signal (
 - It lets you filter noise out like a data science bloodhound 🐾
 
 ## The Not-So-Scary Equations
-- **Continuous:**  
+- **Continuous:**
   $$ F(\omega) = \int_{-\infty}^{\infty} f(t) e^{-i\omega t} dt $$
-- **Discrete:**  
+- **Discrete:**
   $$ X_k = \sum_{n=0}^{N-1} x_n e^{-2\pi i k n / N} $$
 
 Howl if you want a demo!🐾
 """
+
 # %%
 import numpy as np
 import plotly.graph_objs as go
@@ -35,19 +36,31 @@ noise = np.random.normal(0, 0.8, size=t.shape)  # gaussian noise
 noisy_signal = signal + noise
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=t, y=noisy_signal, mode='lines', 
-                        name='Noisy Signal',
-                        line=dict(color='#00CED1')))
-fig.add_trace(go.Scatter(x=t, y=signal, mode='lines', 
-                        name='Original Signal',
-                        line=dict(color='#FFD700', dash='dash')))
+fig.add_trace(
+    go.Scatter(
+        x=t,
+        y=noisy_signal,
+        mode="lines",
+        name="Noisy Signal",
+        line=dict(color="#00CED1"),
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        x=t,
+        y=signal,
+        mode="lines",
+        name="Original Signal",
+        line=dict(color="#FFD700", dash="dash"),
+    )
+)
 fig.update_layout(
-    template='plotly_dark',
-    title='🚀 Noisy Periodic Signal (with True Signal!)',
-    xaxis_title='Time (t)',
-    yaxis_title='Amplitude',
-    legend=dict(orientation='h', yanchor='bottom', y=1.05, xanchor='right', x=1),
-    font=dict(family='Arial', size=16)
+    template="plotly_dark",
+    title="🚀 Noisy Periodic Signal (with True Signal!)",
+    xaxis_title="Time (t)",
+    yaxis_title="Amplitude",
+    legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1),
+    font=dict(family="Arial", size=16),
 )
 fig.show()
 # %% [markdown]
@@ -87,16 +100,21 @@ freqs = fftfreq(N, dt)
 pos_mask = freqs > 0
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=freqs[pos_mask], y=fft_mags[pos_mask],
-                         mode='lines',
-                         name='FFT Magnitude',
-                         line=dict(color='#FF69B4')))
+fig.add_trace(
+    go.Scatter(
+        x=freqs[pos_mask],
+        y=fft_mags[pos_mask],
+        mode="lines",
+        name="FFT Magnitude",
+        line=dict(color="#FF69B4"),
+    )
+)
 fig.update_layout(
-    template='plotly_dark',
-    title='🚀 FFT of Noisy Signal: Frequency Domain Paw-ty!',
-    xaxis_title='Frequency (Hz)',
-    yaxis_title='Amplitude (normalized)',
-    font=dict(family='Arial', size=16)
+    template="plotly_dark",
+    title="🚀 FFT of Noisy Signal: Frequency Domain Paw-ty!",
+    xaxis_title="Frequency (Hz)",
+    yaxis_title="Amplitude (normalized)",
+    font=dict(family="Arial", size=16),
 )
 fig.show()
 # %% [markdown]
@@ -134,20 +152,28 @@ import pywt
 import plotly.graph_objs as go
 
 # Perform single-level DWT decomposition
-wavelet = 'db4'  # Daubechies 4, a classic choice!
+wavelet = "db4"  # Daubechies 4, a classic choice!
 coeffs = pywt.dwt(noisy_signal, wavelet)
 cA, cD = coeffs  # Approximation and Detail coefficients
 
 # Plot approximation and detail coefficients
 fig = go.Figure()
-fig.add_trace(go.Scatter(y=cA, mode='lines', name='Approximation (Low Freqs)', line=dict(color='#37FF8B')))
-fig.add_trace(go.Scatter(y=cD, mode='lines', name='Detail (High Freqs)', line=dict(color='#FF9B19')))
+fig.add_trace(
+    go.Scatter(
+        y=cA, mode="lines", name="Approximation (Low Freqs)", line=dict(color="#37FF8B")
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        y=cD, mode="lines", name="Detail (High Freqs)", line=dict(color="#FF9B19")
+    )
+)
 fig.update_layout(
-    template='plotly_dark',
-    title='🌊 DWT Decomposition: Approximation vs Detail 🚀',
-    xaxis_title='Coefficient Index',
-    yaxis_title='Value',
-    font=dict(family='Arial', size=16)
+    template="plotly_dark",
+    title="🌊 DWT Decomposition: Approximation vs Detail 🚀",
+    xaxis_title="Coefficient Index",
+    yaxis_title="Value",
+    font=dict(family="Arial", size=16),
 )
 fig.show()
 # %% [markdown]

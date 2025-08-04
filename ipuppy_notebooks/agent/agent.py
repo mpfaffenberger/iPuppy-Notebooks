@@ -1,6 +1,7 @@
 """
 Data Science Puppy agent - main module.
 """
+
 import sys
 
 import pathlib
@@ -20,11 +21,15 @@ logger = logging.getLogger(__name__)
 # Try to import ModelFactory, but fall back to direct model creation if not available
 try:
     from code_puppy.model_factory import ModelFactory
+
     MODELS_JSON_PATH = os.environ.get("MODELS_JSON_PATH", None)
     if MODELS_JSON_PATH is None:
         # Try to find the models.json file relative to the module
         import code_puppy.model_factory
-        MODELS_JSON_PATH = pathlib.Path(code_puppy.model_factory.__file__).parent / "models.json"
+
+        MODELS_JSON_PATH = (
+            pathlib.Path(code_puppy.model_factory.__file__).parent / "models.json"
+        )
     USE_MODEL_FACTORY = True
 except ImportError:
     USE_MODEL_FACTORY = False
@@ -44,7 +49,7 @@ class AgentResponse(pydantic.BaseModel):
 
 class DataSciencePuppyAgent:
     """A data science specialized agent that controls iPuppy Notebooks."""
-    
+
     def __init__(self):
         # Socket ID for notebook operations
         self.notebook_sid = ""
@@ -68,7 +73,7 @@ class DataSciencePuppyAgent:
             output_type=AgentResponse,
             retries=3,
         )
-        
+
         # Register tools
         register_data_science_tools(self.agent, self)
 
@@ -76,16 +81,18 @@ class DataSciencePuppyAgent:
         """Set the active model by key from the configuration."""
         try:
             if model_key not in self.config:
-                logger.error(f"Model key '{model_key}' not found in configuration. Available keys: {list(self.config.keys())}")
+                logger.error(
+                    f"Model key '{model_key}' not found in configuration. Available keys: {list(self.config.keys())}"
+                )
                 return False
-            
+
             # Create new model instance
             new_model = ModelFactory.get_model(model_key, self.config)
-            
+
             # Update the agent with new model
             self.model = new_model
             self.current_model_key = model_key
-            
+
             # Create a new agent instance with the new model
             # (pydantic_ai doesn't support model swapping on existing agents)
             self.agent = Agent(
@@ -94,21 +101,21 @@ class DataSciencePuppyAgent:
                 output_type=AgentResponse,
                 retries=3,
             )
-            
+
             # Re-register tools on the new agent
             register_data_science_tools(self.agent, self)
-            
+
             logger.info(f"Successfully switched to model: {model_key}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to switch to model '{model_key}': {e}")
             return False
 
     def get_available_models(self) -> dict:
         """Get all available models from the configuration."""
-        return {key: config.get('name', key) for key, config in self.config.items()}
-    
+        return {key: config.get("name", key) for key, config in self.config.items()}
+
     def get_current_model(self) -> str:
         """Get the currently active model key."""
         return self.current_model_key
@@ -121,12 +128,12 @@ class DataSciencePuppyAgent:
     def get_notebook_sid(self) -> str:
         """Get the current notebook socket ID."""
         return self.notebook_sid
-    
+
     def set_current_notebook(self, notebook_name: str):
         """Set the current notebook name for conversation history."""
         self.current_notebook = notebook_name
         logger.info(f"Set current_notebook to: {notebook_name}")
-    
+
     def get_current_notebook(self) -> str:
         """Get the current notebook name."""
         return self.current_notebook
@@ -137,46 +144,49 @@ class DataSciencePuppyAgent:
             # Save user message to conversation history
             if self.current_notebook:
                 conversation_history.add_message(self.current_notebook, "user", task)
-            
+
             # Get conversation context for the agent
             context = ""
             if self.current_notebook:
-                context = conversation_history.get_recent_context(self.current_notebook, max_messages=10)
-            
+                context = conversation_history.get_recent_context(
+                    self.current_notebook, max_messages=10
+                )
+
             # Prepare the full prompt with context
             full_task = task
             if context and context != "No previous conversation history.":
                 full_task = f"{context}\n\n=== Current Request ===\n{task}"
-            
+
             result = await self.agent.run(full_task)
-            
+
             # Save agent response to conversation history
             if self.current_notebook and result.output:
                 conversation_history.add_message(
-                    self.current_notebook, 
-                    "agent", 
+                    self.current_notebook,
+                    "agent",
                     result.output.output_message,
-                    metadata={"awaiting_user_input": result.output.awaiting_user_input}
+                    metadata={"awaiting_user_input": result.output.awaiting_user_input},
                 )
-            
+
             return result.output
         except Exception as e:
             logger.error(f"Error running agent: {e}")
             error_response = AgentResponse(
                 output_message=f"Error executing data science task: {str(e)}",
-                awaiting_user_input=False
+                awaiting_user_input=False,
             )
-            
+
             # Save error response to conversation history
             if self.current_notebook:
                 conversation_history.add_message(
-                    self.current_notebook, 
-                    "agent", 
+                    self.current_notebook,
+                    "agent",
                     error_response.output_message,
-                    metadata={"error": True}
+                    metadata={"error": True},
                 )
-            
+
             return error_response
+
 
 # Singleton instance
 _data_science_puppy_agent = None

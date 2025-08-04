@@ -11,19 +11,29 @@ import socketio
 from ipuppy_notebooks.kernels.manager import kernel_manager
 from ipuppy_notebooks.kernels.executor import executor
 from ipuppy_notebooks.py_notebook import load_py_notebook, dump_py_notebook
-from ipuppy_notebooks.socket_handlers import handle_connect, handle_disconnect, handle_execute_code, handle_read_cell_input_response, handle_read_cell_output_response, handle_list_all_cells_response, handle_file_completion_request
+from ipuppy_notebooks.socket_handlers import (
+    handle_connect,
+    handle_disconnect,
+    handle_execute_code,
+    handle_read_cell_input_response,
+    handle_read_cell_output_response,
+    handle_list_all_cells_response,
+    handle_file_completion_request,
+)
 from ipuppy_notebooks.agent.agent import get_data_science_puppy_agent
 from ipuppy_notebooks.conversation_history import conversation_history
 
 # Create Socket.IO server
 sio = socketio.AsyncServer(
-    async_mode='asgi',
-    cors_allowed_origins="*",
-    logger=True,
-    engineio_logger=True
+    async_mode="asgi", cors_allowed_origins="*", logger=True, engineio_logger=True
 )
 
-app = FastAPI(title="iPuppy Notebooks", description="A Jupyter notebook clone with a modern dark mode UI", docs_url="/api/v1/docs", redoc_url="/api/v1/redoc")
+app = FastAPI(
+    title="iPuppy Notebooks",
+    description="A Jupyter notebook clone with a modern dark mode UI",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+)
 
 templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
 app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
@@ -37,34 +47,42 @@ logger = logging.getLogger(__name__)
 
 agent = get_data_science_puppy_agent()
 
+
 # Socket.IO event handlers
 @sio.event
 async def connect(sid, environ):
     await handle_connect(sid, environ)
 
+
 @sio.event
 async def disconnect(sid):
     await handle_disconnect(sid)
+
 
 @sio.event
 async def execute_code(sid, data):
     await handle_execute_code(sid, data)
 
+
 @sio.event
 async def read_cell_input_response(sid, data):
     await handle_read_cell_input_response(sid, data)
+
 
 @sio.event
 async def read_cell_output_response(sid, data):
     await handle_read_cell_output_response(sid, data)
 
+
 @sio.event
 async def list_all_cells_response(sid, data):
     await handle_list_all_cells_response(sid, data)
 
+
 @sio.event
 async def file_completion_request(sid, data):
     await handle_file_completion_request(sid, data)
+
 
 # Application startup and shutdown events
 @app.on_event("startup")
@@ -72,14 +90,17 @@ async def startup_event():
     logger.info("Starting iPuppy Notebooks application...")
     await kernel_manager.startup()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down iPuppy Notebooks application...")
     await kernel_manager.shutdown()
 
+
 @app.get("/old_app")
 async def old_app(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 # Alternative way to serve the React app's index.html directly
 @app.get("/react")
@@ -88,11 +109,15 @@ async def react_index():
         content = f.read()
     return Response(content=content, media_type="text/html")
 
+
 @app.get("/api/v1/notebooks")
 async def list_notebooks():
     notebooks_dir = Path(".")
-    notebooks = [f.name for f in notebooks_dir.iterdir() if f.is_file() and f.suffix == ".py"]
+    notebooks = [
+        f.name for f in notebooks_dir.iterdir() if f.is_file() and f.suffix == ".py"
+    ]
     return {"notebooks": notebooks}
+
 
 @app.get("/api/v1/notebooks/{notebook_name}")
 async def get_notebook(notebook_name: str):
@@ -108,6 +133,7 @@ async def get_notebook(notebook_name: str):
         with open(notebook_path, "r") as f:
             return json.load(f)
 
+
 @app.post("/api/v1/notebooks/{notebook_name}")
 async def create_notebook(notebook_name: str):
     # sanitize filename and ensure .py extension only once
@@ -122,21 +148,23 @@ async def create_notebook(notebook_name: str):
             {
                 "cell_type": "code",
                 "source": ["print('Welcome to iPuppy Notebooks!')\n"],
-                "outputs": []
+                "outputs": [],
             }
         ]
     }
     notebook_path.write_text(dump_py_notebook(initial_notebook), encoding="utf-8")
     return {"message": f"Notebook {notebook_path.name} created successfully"}
 
+
 @app.delete("/api/v1/notebooks/{notebook_name}")
 async def delete_notebook(notebook_name: str):
     notebook_path = Path(f"./{notebook_name}")
     if not notebook_path.exists():
         raise HTTPException(status_code=404, detail="Notebook not found")
-    
+
     notebook_path.unlink()
     return {"message": f"Notebook {notebook_name} deleted successfully"}
+
 
 # Global Kernel Management Routes
 @app.get("/api/v1/kernel/status")
@@ -146,6 +174,7 @@ async def get_global_kernel_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/v1/kernel/reset")
 async def reset_global_kernel():
     try:
@@ -154,6 +183,7 @@ async def reset_global_kernel():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/v1/kernel/ensure")
 async def ensure_global_kernel():
     try:
@@ -161,6 +191,7 @@ async def ensure_global_kernel():
         return {"kernel_id": kernel_id, "status": "running"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Code Execution Route
 @app.post("/api/v1/execute")
@@ -171,6 +202,7 @@ async def execute_code(code: str = Body(..., embed=True)):
         return {"outputs": outputs}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Code Completion Route
 @app.post("/api/v1/complete")
@@ -184,6 +216,7 @@ async def complete_code(request: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Agent Routes
 @app.post("/api/v1/agent/run")
 async def run_agent(request: dict = Body(...)):
@@ -191,49 +224,58 @@ async def run_agent(request: dict = Body(...)):
         task = request.get("task", "")
         if not task.strip():
             raise HTTPException(status_code=400, detail="Task cannot be empty")
-        
+
         # Note: notebook_sid is now managed via the agent's set_notebook_sid method
-        
+
         logger.info(f"Starting agent task in background: {task}")
-        
+
         # Create a background task to run the agent without blocking
         async def run_agent_task():
             try:
                 result = await agent.run(task)
-                
+
                 # Send the final result via socket.io to all connected clients
                 from ipuppy_notebooks.socket_handlers import socketio_manager
-                await socketio_manager.broadcast("agent_task_completed", {
-                    "success": True,
-                    "output_message": result.output_message,
-                    "awaiting_user_input": result.awaiting_user_input
-                })
-                logger.info(f"Agent task completed successfully")
-                
+
+                await socketio_manager.broadcast(
+                    "agent_task_completed",
+                    {
+                        "success": True,
+                        "output_message": result.output_message,
+                        "awaiting_user_input": result.awaiting_user_input,
+                    },
+                )
+                logger.info("Agent task completed successfully")
+
             except Exception as e:
                 logger.error(f"Error in background agent task: {e}")
                 # Send error via socket.io
                 from ipuppy_notebooks.socket_handlers import socketio_manager
-                await socketio_manager.broadcast("agent_task_completed", {
-                    "success": False,
-                    "error": str(e),
-                    "output_message": f"Error executing task: {str(e)}",
-                    "awaiting_user_input": False
-                })
-        
+
+                await socketio_manager.broadcast(
+                    "agent_task_completed",
+                    {
+                        "success": False,
+                        "error": str(e),
+                        "output_message": f"Error executing task: {str(e)}",
+                        "awaiting_user_input": False,
+                    },
+                )
+
         # Start the task in the background
         asyncio.create_task(run_agent_task())
-        
+
         # Return immediately
         return {
             "success": True,
             "message": "Agent task started in background",
-            "status": "running"
+            "status": "running",
         }
-        
+
     except Exception as e:
         logger.error(f"Error starting agent task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/v1/agent/models")
 async def get_agent_models():
@@ -241,13 +283,11 @@ async def get_agent_models():
     try:
         models = agent.get_available_models()
         current_model = agent.get_current_model()
-        return {
-            "models": models,
-            "current_model": current_model
-        }
+        return {"models": models, "current_model": current_model}
     except Exception as e:
         logger.error(f"Error getting agent models: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/v1/agent/models/{model_key}")
 async def set_agent_model(model_key: str):
@@ -258,13 +298,16 @@ async def set_agent_model(model_key: str):
             return {
                 "success": True,
                 "message": f"Successfully switched to model: {model_key}",
-                "current_model": agent.get_current_model()
+                "current_model": agent.get_current_model(),
             }
         else:
-            raise HTTPException(status_code=400, detail=f"Failed to switch to model: {model_key}")
+            raise HTTPException(
+                status_code=400, detail=f"Failed to switch to model: {model_key}"
+            )
     except Exception as e:
         logger.error(f"Error setting agent model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/v1/agent/notebook-sid")
 async def set_agent_notebook_sid(request: dict = Body(...)):
@@ -272,20 +315,21 @@ async def set_agent_notebook_sid(request: dict = Body(...)):
     try:
         sid = request.get("sid", "")
         notebook_name = request.get("notebook_name", "")
-        
+
         agent.set_notebook_sid(sid)
         if notebook_name:
             agent.set_current_notebook(notebook_name)
-        
+
         return {
             "success": True,
             "message": f"Set notebook SID to: {sid}",
             "notebook_sid": agent.get_notebook_sid(),
-            "current_notebook": agent.get_current_notebook()
+            "current_notebook": agent.get_current_notebook(),
         }
     except Exception as e:
         logger.error(f"Error setting agent notebook SID: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Conversation History Routes
 @app.get("/api/v1/agent/conversation-history/{notebook_name}")
@@ -298,11 +342,12 @@ async def get_conversation_history(notebook_name: str):
             "success": True,
             "notebook_name": notebook_name,
             "history": history,
-            "summary": summary
+            "summary": summary,
         }
     except Exception as e:
         logger.error(f"Error getting conversation history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.delete("/api/v1/agent/conversation-history/{notebook_name}")
 async def clear_conversation_history(notebook_name: str):
@@ -312,29 +357,30 @@ async def clear_conversation_history(notebook_name: str):
         if success:
             return {
                 "success": True,
-                "message": f"Cleared conversation history for {notebook_name}"
+                "message": f"Cleared conversation history for {notebook_name}",
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to clear conversation history")
+            raise HTTPException(
+                status_code=500, detail="Failed to clear conversation history"
+            )
     except Exception as e:
         logger.error(f"Error clearing conversation history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/v1/agent/conversation-summary/{notebook_name}")
 async def get_conversation_summary(notebook_name: str):
     """Get conversation summary for a notebook."""
     try:
         summary = conversation_history.get_conversation_summary(notebook_name)
-        return {
-            "success": True,
-            "notebook_name": notebook_name,
-            "summary": summary
-        }
+        return {"success": True, "notebook_name": notebook_name, "summary": summary}
     except Exception as e:
         logger.error(f"Error getting conversation summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Socket.IO is now handling real-time communication - no WebSocket endpoint needed
+
 
 # Notebook Save Route
 @app.put("/api/v1/notebooks/{notebook_name}")
@@ -342,11 +388,13 @@ async def save_notebook(notebook_name: str, request: Request):
     # Get the raw body first to debug what's being sent
     body = await request.body()
     logger.info(f"Received save request for {notebook_name} with body: {body.decode()}")
-    
+
     # Early exit if body is empty
     if not body:
         logger.error("Empty request body received")
-        raise HTTPException(status_code=400, detail="Request body is empty. Notebook content required.")
+        raise HTTPException(
+            status_code=400, detail="Request body is empty. Notebook content required."
+        )
 
     # Parse JSON from the previously-read bytes (reading twice exhausts the stream)
     try:
@@ -354,23 +402,26 @@ async def save_notebook(notebook_name: str, request: Request):
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
-    
+
     notebook_path = Path(f"./{notebook_name}")
     if not notebook_path.exists():
         raise HTTPException(status_code=404, detail="Notebook not found")
-    
+
     # Validate required notebook structure
     required_keys = ["cells", "metadata", "nbformat", "nbformat_minor"]
     for key in required_keys:
         if key not in content:
             logger.error(f"Missing required key in notebook content: {key}")
-            raise HTTPException(status_code=400, detail=f"Missing required key in notebook content: {key}")
-    
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required key in notebook content: {key}",
+            )
+
     # Validate cells structure
     if not isinstance(content["cells"], list):
         logger.error("Cells must be a list")
         raise HTTPException(status_code=400, detail="Cells must be a list")
-    
+
     try:
         if notebook_path.suffix == ".py":
             notebook_path.write_text(dump_py_notebook(content), encoding="utf-8")
@@ -383,6 +434,7 @@ async def save_notebook(notebook_name: str, request: Request):
         logger.error(f"Error saving notebook: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Mount the React app's static files at root - MUST be before Socket.IO wrapping
 app.mount("/", StaticFiles(directory="dist", html=True), name="react_app")
 
@@ -391,9 +443,11 @@ socket_app = socketio.ASGIApp(sio, app)
 
 if __name__ == "__main__":
     uvicorn.run(
-        "ipuppy_notebooks.main:socket_app", 
-        host="0.0.0.0", 
-        port=8000, 
+        "ipuppy_notebooks.main:socket_app",
+        host="0.0.0.0",
+        port=8000,
         reload=True,
-        reload_excludes=["*.py"]  # Exclude all .py files in root directory from reload watching
+        reload_excludes=[
+            "*.py"
+        ],  # Exclude all .py files in root directory from reload watching
     )
