@@ -6,14 +6,17 @@ A revolutionary notebook environment that combines the power of Jupyter-style co
 
 ## ✨ Features
 
-🐕 **Puppy Scientist AI Agent** - Your personal data science companion that helps analyze data, write code, and answer questions  
+🐕 **Puppy Scientist AI Agent** - Fully integrated AI assistant that autonomously controls notebooks, writes code, executes analyses, and provides data science expertise  
 🌙 **Modern Dark Theme** - Sleek monochromatic design with zinc color palette and JetBrains Mono fonts  
-⚡ **Real-time Execution** - WebSocket-powered code execution with instant feedback  
+⚡ **Real-time Execution** - WebSocket-powered code execution with instant feedback and auto-scroll to outputs  
+📊 **Rich Output Support** - LaTeX math rendering, Plotly charts, matplotlib/seaborn plots, images, videos, and more  
+🧮 **LaTeX in Markdown** - Write beautiful mathematical expressions with KaTeX rendering (both inline `$x$` and display `$$x$$`)  
 📱 **Responsive Design** - Works beautifully on desktop and mobile  
-🔄 **Cell Management** - Create, reorder, expand, and manage code/markdown cells  
-⌨️ **Smart Shortcuts** - Shift+Enter to run cells and navigate seamlessly  
-💾 **Auto-Save** - Never lose your work (currently disabled to prevent server reloads)  
-🐍 **Python Kernel** - Full iPython kernel with autocomplete and rich output  
+🔄 **Cell Management** - Create, reorder, expand, and manage code/markdown cells with full programmatic control  
+⌨️ **Smart Shortcuts** - Shift+Enter to run cells and navigate seamlessly with intelligent tab handling  
+🤖 **Agentic Operations** - AI can directly manipulate notebooks: add cells, execute code, read outputs, and more  
+🐍 **Python Kernel** - Full iPython kernel with autocomplete, rich MIME type support, and matplotlib inline display  
+🎨 **Animated UI** - Puppy spinner animations and smooth transitions throughout  
 
 ## 🚀 Quick Start
 
@@ -21,6 +24,7 @@ A revolutionary notebook environment that combines the power of Jupyter-style co
 - Python 3.8+
 - Node.js 16+
 - [uv](https://docs.astral.sh/uv/) package manager
+- [code_puppy](https://github.com/anthropics/code_puppy) for AI model management (for full agent functionality)
 
 ### Installation 📦
 
@@ -34,6 +38,9 @@ A revolutionary notebook environment that combines the power of Jupyter-style co
    ```bash
    # Install Python dependencies
    uv pip install -r pyproject.toml
+   
+   # Install code_puppy for AI model management (optional but recommended)
+   # Follow instructions at: https://github.com/anthropics/code_puppy
    ```
 
 3. **Frontend Setup** ⚛️
@@ -59,43 +66,53 @@ A revolutionary notebook environment that combines the power of Jupyter-style co
 
 ### Getting Started 🐾
 1. **Create a Notebook** - Click "create" in the sidebar and give your notebook a name
-2. **Add Cells** - Use the "add cell" button to create code or markdown cells
-3. **Run Code** - Press the 🚀 run button or use Shift+Enter to execute cells
-4. **Chat with Puppy Scientist** - Ask questions and get AI-powered assistance in the sidebar
+2. **Add Cells** - Use the "add cell" button to create code or markdown cells  
+3. **Run Code** - Press the 🚀 run button or use Shift+Enter to execute cells (automatically scrolls to output!)
+4. **Chat with Puppy Scientist** - Ask questions and watch the AI autonomously control your notebook, write code, and analyze data
+5. **Write Math** - Use LaTeX in markdown cells: `$inline$` or `$$display$$` for beautiful mathematical expressions
+6. **Rich Outputs** - Enjoy Plotly charts, matplotlib plots, LaTeX rendering, images, and more
 
-### Backend Operations 🐕
+### AI Agent Operations 🤖
 
-iPuppy Notebooks now supports triggering frontend operations directly from the backend! The following operations can be initiated server-side:
+The **Puppy Scientist AI Agent** can autonomously control your notebook through these operations:
 
-- `add_new_cell(cell_index, cell_type, content)` - Add a new cell at the specified index
-- `delete_cell(cell_index)` - Delete a cell at the specified index
-- `alter_cell_content(cell_index, content)` - Modify the content of a cell
-- `execute_cell(cell_index, code)` - Execute a cell at the specified index
-- `swap_cell_type(cell_index, new_type)` - Toggle a cell between code and markdown
-- `move_cell(cell_index, new_index)` - Move a cell to a new position
-- `read_cell_input(cell_index, sid)` - Read the input content of a cell (requires client session ID)
-- `read_cell_output(cell_index, sid)` - Read the output content of a cell (requires client session ID)
+**Notebook Manipulation:**
+- `add_new_cell(cell_index, cell_type, content)` - Add new code/markdown cells
+- `delete_cell(cell_index)` - Remove cells
+- `alter_cell_content(cell_index, content)` - Modify cell content
+- `execute_cell(cell_index)` - Execute cells and wait for results
+- `swap_cell_type(cell_index, new_type)` - Switch between code/markdown
+- `move_cell(cell_index, new_index)` - Reorder cells
 
-To use these functions, simply import them:
+**State Reading (requires active notebook):**
+- `list_all_cells()` - Get complete notebook overview
+- `read_cell_input(cell_index)` - Read cell source code
+- `read_cell_output(cell_index)` - Read execution outputs
 
-```python
-from ipuppy_notebooks import add_new_cell, delete_cell, alter_cell_content
+**Communication:**
+- `share_your_reasoning(reasoning, next_steps)` - Explain thought process
 
-# Example usage
-add_new_cell(0, "code", "print('Hello from the backend!')")
-delete_cell(1)
-alter_cell_content(2, "x = 42\nprint(x)")
+The agent uses these tools to autonomously:
+- 📊 Analyze your data and create visualizations
+- 💻 Write, execute, and debug Python code
+- 📝 Create markdown documentation with LaTeX math
+- 🔍 Inspect notebook state and outputs
+- 🚀 Implement complete data science workflows
+
+Example conversation:
+```
+You: "Analyze the iris dataset and create some visualizations"
+🐶: *Creates cells, loads data, performs EDA, generates Plotly charts*
 ```
 
-These operations will broadcast events via Socket.IO to all connected frontend clients, enabling real-time synchronization of notebook state across all devices.
-
 ### Keyboard Shortcuts ⌨️
-- **Shift+Enter** - Execute current cell and move to next
+- **Shift+Enter** - Execute current cell and move to next (with auto-scroll to output)
+- **Tab** - Smart indentation and autocomplete in code cells
 - **Cell Navigation** - Seamlessly move between cells after execution
 
 ### Cell Types 📝
-- **Code Cells** - Execute Python code with full kernel support
-- **Markdown Cells** - Rich text formatting and documentation
+- **Code Cells** - Execute Python code with full IPython kernel, rich outputs, and autocomplete
+- **Markdown Cells** - Rich text formatting with LaTeX math support (`$inline$` and `$$display$$`)
 
 ## 🏗️ Architecture
 
@@ -104,15 +121,26 @@ These operations will broadcast events via Socket.IO to all connected frontend c
 ├── 🐍 Backend (FastAPI)
 │   ├── main.py                 # FastAPI server and WebSocket handling
 │   ├── ipuppy_notebooks/       # Core notebook functionality
-│   └── notebooks/              # Stored notebook files
+│   │   ├── agent/              # AI agent system
+│   │   │   ├── agent.py        # DataSciencePuppyAgent main class
+│   │   │   ├── tools.py        # Notebook manipulation tools
+│   │   │   └── prompts.py      # System prompts and instructions
+│   │   ├── kernels/            # Jupyter kernel management
+│   │   │   ├── manager.py      # Kernel lifecycle and initialization
+│   │   │   └── executor.py     # Code execution handling
+│   │   ├── frontend_operations.py # Backend→Frontend communication
+│   │   └── socket_handlers.py  # WebSocket event handling
+│   └── notebooks/              # Stored notebook files (.py format)
 ├── ⚛️ Frontend (React + TypeScript)
 │   ├── src/
 │   │   ├── components/         # React components
 │   │   │   ├── Header.tsx      # Top navigation with kernel status
-│   │   │   ├── Sidebar.tsx     # Notebooks + Puppy Scientist
-│   │   │   ├── NotebookCell.tsx # Individual cell component
+│   │   │   ├── Sidebar.tsx     # Notebooks + Puppy Scientist chat
+│   │   │   ├── NotebookCell.tsx # Individual cell with LaTeX support
 │   │   │   └── NotebookContainer.tsx # Main notebook view
-│   │   ├── App.tsx            # Main application logic
+│   │   ├── lib/
+│   │   │   └── tabHandler.ts   # Smart tab indentation system
+│   │   ├── App.tsx            # Main application logic & WebSocket
 │   │   └── main.tsx           # React entry point
 │   └── public/
 │       └── puppy.svg          # Custom puppy favicon 🐕
@@ -129,14 +157,22 @@ iPuppy Notebooks embraces a **modern monochromatic aesthetic** with:
 
 ## 🤖 AI Agent Integration
 
-The **Puppy Scientist** 🐕‍🦺 is your intelligent companion that can:
-- 📊 Analyze your data and suggest insights
-- 💻 Help write and debug Python code
-- 📖 Explain complex concepts and libraries
-- 🔍 Answer questions about your notebooks
-- 🚀 Suggest optimizations and best practices
+The **Puppy Scientist** 🐕‍🦺 is a fully autonomous AI agent powered by pydantic-ai that can:
+- 🎯 **Autonomous Operation** - Takes high-level requests and executes complete workflows independently
+- 📊 **Data Analysis** - Loads, cleans, analyzes data and creates professional visualizations
+- 💻 **Code Generation** - Writes, executes, and debugs Python code in real-time
+- 🧮 **Mathematical Communication** - Creates markdown cells with LaTeX equations and explanations
+- 🔍 **Notebook Inspection** - Reads existing notebook state and builds upon your work
+- 🚀 **Best Practices** - Follows data science methodologies and coding standards
+- 🐕 **Personality** - Fun, informal, and pedantic about data science principles (refuses to make pie charts!)
 
-*Currently simulated - full AI integration coming soon!* 🎯
+**Supported AI Models:**
+- Claude (Anthropic) - Recommended for best performance
+- GPT-4 series (OpenAI) 
+- QWEN models (Alibaba)
+- Any model supported by pydantic-ai
+
+The agent maintains conversation history per notebook and can switch between different models on the fly! 🎯
 
 ## 🛣️ Roadmap
 
@@ -147,18 +183,28 @@ The **Puppy Scientist** 🐕‍🦺 is your intelligent companion that can:
 - [x] Keyboard shortcuts and navigation
 - [x] Modern UI/UX design
 
-### Phase 2: AI Integration 🚧
-- [ ] Real Puppy Scientist AI agent
-- [ ] Code completion and suggestions
-- [ ] Intelligent error handling
-- [ ] Data analysis automation
+### Phase 2: AI Integration ✅
+- [x] Fully autonomous Puppy Scientist AI agent
+- [x] Real-time notebook manipulation by AI
+- [x] Multi-model support (Claude, GPT-4, QWEN, etc.)
+- [x] Conversation history per notebook
+- [x] Intelligent error handling and guidance
 
-### Phase 3: Advanced Features 🔮
+### Phase 3: Rich Content ✅
+- [x] LaTeX math rendering in markdown cells
+- [x] Comprehensive MIME type support (images, videos, audio, JSON, CSV)
+- [x] Plotly charts with proper timing
+- [x] Matplotlib/seaborn inline display
+- [x] Auto-scroll to outputs on execution
+- [x] Animated puppy spinner and smooth UI transitions
+
+### Phase 4: Advanced Features 🔮
 - [ ] Collaborative editing
 - [ ] Version control integration
 - [ ] Plugin system
-- [ ] Advanced visualization tools
-- [ ] Export to various formats
+- [ ] Export to various formats (PDF, HTML, etc.)
+- [ ] Custom visualization libraries
+- [ ] Advanced data connectors
 
 ## 🤝 Contributing
 
@@ -175,9 +221,17 @@ MIT License - Feel free to use iPuppy Notebooks for your data science adventures
 
 ## 🐕 About the Creator
 
-Created with ❤️ by **Michael Pfaffenberger** to revolutionize how we approach data science. No more bloated IDEs or expensive proprietary tools - just pure, puppy-powered productivity! 🐶✨
+Created with ❤️ by **Michael Pfaffenberger** to revolutionize how we approach data science. iPuppy Notebooks combines the best of Jupyter-style computing with cutting-edge AI assistance - no more bloated IDEs or expensive proprietary tools, just pure, puppy-powered productivity! 🐶✨
+
+**Why iPuppy Notebooks?**
+- 🤖 **True AI Partnership** - The agent doesn't just suggest, it actually does the work
+- 📊 **Beautiful Math & Viz** - LaTeX rendering and rich outputs make presentations ready
+- ⚡ **Lightning Fast** - Modern architecture with real-time updates
+- 🎨 **Thoughtful Design** - Every detail crafted for the data science workflow
+- 🐕 **Pure Joy** - Data science should be fun, not frustrating!
 
 ---
 
 **Ready to unleash your data science potential?** 🐕🚀  
-*Woof woof! Let's analyze some data together!* 🐾📊
+*Ask the Puppy Scientist: "Analyze the Titanic dataset and create some visualizations"*  
+*Watch as it autonomously loads data, performs EDA, and generates beautiful charts!* 🐾📊
