@@ -44,12 +44,22 @@ jobs:
       - name: Build frontend 🚀
         run: npm run build
 
+      - name: Temporarily allow compiled_ui in build 🔧
+        run: |
+          # Remove the gitignore line that excludes compiled_ui during build
+          sed -i '/ipuppy_notebooks\/compiled_ui\//d' .gitignore
+
       - name: Bump version 📈
         run: uv version --bump patch
 
       - name: Build Python package 📦
         run: |
           uvx --from build pyproject-build --wheel
+
+      - name: Restore gitignore for compiled_ui 🔒
+        run: |
+          # Add back the gitignore line to keep compiled_ui out of git
+          echo "ipuppy_notebooks/compiled_ui/" >> .gitignore
 
       - name: Publish to PyPI 🚀
         env:
