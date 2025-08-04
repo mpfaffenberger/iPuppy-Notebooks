@@ -29,8 +29,7 @@ jobs:
       - name: Install Python dependencies 📦
         run: |
           pip install --upgrade pip
-          pip install ruff pytest pytest-cov pytest-asyncio
-          pip install -e .
+          pip install ruff pytest pytest-cov pytest-asyncio uv
 
       - name: Install Node dependencies 📦
         run: npm ci
@@ -50,11 +49,16 @@ jobs:
       - name: Build frontend 🚀
         run: npm run build
 
+      - name: Build and install package 📦
+        run: |
+          uvx --from build pyproject-build --wheel
+          pip install dist/*.whl
+
       - name: Run Python tests 🧪
         run: pytest --cov=ipuppy_notebooks -s
 
       - name: Test notebook operations 🐶
-        run: python -m pytest ipuppy_notebooks/test_frontend_operations.py -v
+        run: pytest ipuppy_notebooks/test_frontend_operations.py -v
 
   build-and-test:
     runs-on: ubuntu-latest
@@ -73,19 +77,25 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
+      - name: Install build tools 🔧
+        run: pip install uv
+
       - name: Install dependencies 📦
-        run: |
-          pip install --upgrade pip
-          pip install -e .
-          npm ci
+        run: npm ci
 
       - name: Build frontend 🚀
         run: npm run build
 
+      - name: Build package 📦
+        run: uvx --from build pyproject-build --wheel
+
       - name: Start server and test 🧪
         run: |
+          # Install the built wheel
+          pip install dist/*.whl
+          
           # Start the server in background
-          python -m ipuppy_notebooks.main &
+          ipuppy-notebooks &
           SERVER_PID=$!
           
           # Wait for server to be ready
