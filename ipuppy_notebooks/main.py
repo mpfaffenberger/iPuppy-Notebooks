@@ -36,7 +36,7 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory="ipuppy_notebooks/templates")
-app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+app.mount("/assets", StaticFiles(directory="build/assets"), name="assets")
 
 # Create directories if they don't exist
 os.makedirs("kernels", exist_ok=True)
@@ -105,7 +105,7 @@ async def old_app(request: Request):
 # Alternative way to serve the React app's index.html directly
 @app.get("/react")
 async def react_index():
-    with open("dist/index.html", "r") as f:
+    with open("build/index.html", "r") as f:
         content = f.read()
     return Response(content=content, media_type="text/html")
 

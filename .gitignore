@@ -4,7 +4,6 @@ npm-debug.log
 .env
 .vscode/
 .DS_Store
-dist/
 build/
 
 .puppy_session_memory.json
@@ -33,4 +32,5 @@ Thumbs.db
 
 # iPuppy Notebooks runtime files
 kernels/
-
+build/
+dist/
