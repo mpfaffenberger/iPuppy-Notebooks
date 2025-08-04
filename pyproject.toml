@@ -53,14 +53,14 @@ build-backend = "hatchling.build"
 packages = ["ipuppy_notebooks"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"dist" = "ipuppy_notebooks/dist"
+"build" = "ipuppy_notebooks/build"
 "README.md" = "README.md"
 "LICENSE" = "LICENSE"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "ipuppy_notebooks/",
-    "dist/",
+    "build/",
     "README.md",
     "LICENSE",
     "pyproject.toml"

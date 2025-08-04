@@ -436,7 +436,7 @@ async def save_notebook(notebook_name: str, request: Request):
 
 
 # Mount the React app's static files at root - MUST be before Socket.IO wrapping
-app.mount("/", StaticFiles(directory="dist", html=True), name="react_app")
+app.mount("/", StaticFiles(directory="build", html=True), name="react_app")
 
 # Mount Socket.IO with FastAPI - this creates the final ASGI app
 socket_app = socketio.ASGIApp(sio, app)
