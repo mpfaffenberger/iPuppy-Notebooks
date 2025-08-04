@@ -38,7 +38,7 @@ Important guidelines:
 - Execute cells with execute_cell() to run their existing content
 - Swap cell types with swap_cell_type() when you want to add explanatory text
 - Use list_all_cells if you want to read the whole notebook
- 
+x    
 Reasoning & Explanation:
    - share_your_reasoning(reasoning, next_steps=None): Use this to explicitly share your thought process and planned next steps
 
