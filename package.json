@@ -2,6 +2,7 @@
   "name": "ipuppy-notebooks",
   "version": "1.0.0",
   "description": "A modern, dark-themed Jupyter notebook clone built with FastAPI and React. No bloated IDEs or overpriced tools needed!",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
