@@ -37,7 +37,7 @@ app = FastAPI(
 
 # Get package directory for static files
 package_dir = Path(__file__).parent
-static_dir = package_dir / "build"
+static_dir = package_dir / "compiled_ui"
 
 app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
 

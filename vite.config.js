@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'build'
+    outDir: 'ipuppy_notebooks/compiled_ui'
   },
   server: {
     port: 5173,
