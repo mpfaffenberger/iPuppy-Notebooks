@@ -441,13 +441,52 @@ app.mount("/", StaticFiles(directory="dist", html=True), name="react_app")
 # Mount Socket.IO with FastAPI - this creates the final ASGI app
 socket_app = socketio.ASGIApp(sio, app)
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for iPuppy Notebooks 🐶"""
+    import sys
+    
+    # Parse basic command line arguments
+    host = "0.0.0.0"
+    port = 8000
+    reload = False
+    
+    # Simple argument parsing
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == "--host" and i + 1 < len(sys.argv):
+            host = sys.argv[i + 1]
+        elif arg == "--port" and i + 1 < len(sys.argv):
+            port = int(sys.argv[i + 1])
+        elif arg == "--reload":
+            reload = True
+        elif arg == "--help" or arg == "-h":
+            print("🐶 iPuppy Notebooks - Agentic AI-Empowered Data Science")
+            print("")
+            print("Usage:")
+            print("  ipuppy-notebooks [options]")
+            print("  uvx run ipuppy-notebooks [options]")
+            print("")
+            print("Options:")
+            print("  --host HOST     Host to bind to (default: 0.0.0.0)")
+            print("  --port PORT     Port to bind to (default: 8000)")
+            print("  --reload        Enable auto-reload for development")
+            print("  --help, -h      Show this help message")
+            print("")
+            print("After starting, open http://localhost:8000 in your browser")
+            print("and start your data science journey! 🚀")
+            return
+    
+    print("🐶 Starting iPuppy Notebooks...")
+    print(f"🌐 Server will be available at http://{host}:{port}")
+    print("🚀 Press Ctrl+C to stop")
+    
     uvicorn.run(
         "ipuppy_notebooks.main:socket_app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        reload_excludes=[
-            "*.py"
-        ],  # Exclude all .py files in root directory from reload watching
+        host=host,
+        port=port,
+        reload=reload,
+        reload_excludes=["*.py"] if reload else None,
     )
+
+
+if __name__ == "__main__":
+    main()

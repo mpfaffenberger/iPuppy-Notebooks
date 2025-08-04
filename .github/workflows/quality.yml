@@ -1,0 +1,98 @@
+name: Quality Checks
+
+on:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - main
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 🐕
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js 18 ⚛️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Python dependencies 📦
+        run: |
+          pip install --upgrade pip
+          pip install ruff pytest pytest-cov pytest-asyncio
+          pip install -e .
+
+      - name: Install Node dependencies 📦
+        run: npm ci
+
+      - name: Lint Python with ruff 🧹
+        run: ruff check .
+
+      - name: Check Python formatting with ruff 🎨
+        run: ruff format --check .
+
+      - name: Lint TypeScript/React 🧹
+        run: npm run lint
+
+      - name: Type check TypeScript 🔍
+        run: npm run typecheck
+
+      - name: Build frontend 🚀
+        run: npm run build
+
+      - name: Run Python tests 🧪
+        run: pytest --cov=ipuppy_notebooks -s
+
+      - name: Test notebook operations 🐶
+        run: python -m pytest ipuppy_notebooks/test_frontend_operations.py -v
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 🐕
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js 18 ⚛️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies 📦
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          npm ci
+
+      - name: Build frontend 🚀
+        run: npm run build
+
+      - name: Start server and test 🧪
+        run: |
+          # Start the server in background
+          python -m ipuppy_notebooks.main &
+          SERVER_PID=$!
+          
+          # Wait for server to be ready
+          sleep 10
+          
+          # Test that server is running
+          curl -f http://localhost:8000/api/v1/kernel/status || exit 1
+          
+          # Clean up
+          kill $SERVER_PID

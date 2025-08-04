@@ -1,0 +1,80 @@
+# Publishes your package to PyPI using Astral/uv for builds.
+# Set PYPI_API_TOKEN in repo secrets.
+
+permissions:
+  contents: write # Allows writing to the repository
+
+name: Build and Publish to PyPI 🐶📦
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Allows writing to the repository
+    steps:
+      - name: Checkout code 🐕
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.11 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js 18 ⚛️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install build tools 🔧
+        run: pip install uv twine
+
+      - name: Install Node dependencies 📦
+        run: npm ci
+
+      - name: Build frontend 🚀
+        run: npm run build
+
+      - name: Bump version 📈
+        run: uv version --bump patch
+
+      - name: Build Python package 📦
+        run: |
+          uvx --from build pyproject-build --wheel
+
+      - name: Publish to PyPI 🚀
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv run twine upload dist/*
+
+      - name: Push version bump to GitHub 📝
+        if: ${{ success() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "chore: bump version [ci skip] 🐶" || echo "No changes to commit"
+          git push
+
+      - name: Create GitHub Release 🎉
+        if: ${{ success() && github.event_name == 'push' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          gh release create "v$VERSION" \
+            --title "🐶 iPuppy Notebooks v$VERSION" \
+            --notes "New release of iPuppy Notebooks! 🚀" \
+            --generate-notes

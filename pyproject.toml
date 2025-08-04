@@ -1,7 +1,27 @@
 [project]
 name = "ipuppy-notebooks"
 version = "0.1.0"
-description = "A FastAPI-based notebook server with iPuppy integration"
+description = "🐶 Agentic AI-Empowered Data Science Notebooks - A revolutionary notebook environment combining Jupyter-style computing with autonomous AI assistance"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Michael Pfaffenberger", email = "michael@example.com"}
+]
+keywords = ["jupyter", "notebook", "ai", "agent", "data-science", "fastapi", "react"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
 dependencies = [
     "fastapi>=0.68.0",
     "uvicorn>=0.15.0",
@@ -14,14 +34,39 @@ dependencies = [
     "websockets>=10.0",
     "python-socketio>=5.13.0",
     "code-puppy>=0.0.77",
+    "pydantic-ai>=0.0.1",
 ]
+
+[project.scripts]
+ipuppy-notebooks = "ipuppy_notebooks.main:main"
+ipuppy = "ipuppy_notebooks.main:main"
+
+[project.urls]
+Homepage = "https://github.com/your-username/iPuppy-Notebooks"
+Repository = "https://github.com/your-username/iPuppy-Notebooks"
+Documentation = "https://github.com/your-username/iPuppy-Notebooks#readme"
+"Bug Tracker" = "https://github.com/your-username/iPuppy-Notebooks/issues"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-sources = ["main.py", "README.md"]
+packages = ["ipuppy_notebooks"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"dist" = "ipuppy_notebooks/dist"
+"README.md" = "README.md"
+"LICENSE" = "LICENSE"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "ipuppy_notebooks/",
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml"
+]
 
 [tool.uv]
 managed = true
