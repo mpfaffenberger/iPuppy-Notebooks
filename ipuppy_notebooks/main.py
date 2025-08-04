@@ -39,6 +39,16 @@ app = FastAPI(
 package_dir = Path(__file__).parent
 static_dir = package_dir / "compiled_ui"
 
+# Debug: Check if static files exist
+logger.info(f"Package directory: {package_dir}")
+logger.info(f"Static directory: {static_dir}")
+logger.info(f"Static directory exists: {static_dir.exists()}")
+if static_dir.exists():
+    logger.info(f"Static directory contents: {list(static_dir.iterdir())}")
+    assets_dir = static_dir / "assets"
+    if assets_dir.exists():
+        logger.info(f"Assets directory contents: {list(assets_dir.iterdir())}")
+
 app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
 
 # Create directories if they don't exist
