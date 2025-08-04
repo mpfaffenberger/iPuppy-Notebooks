@@ -1,6 +1,6 @@
 [project]
 name = "ipuppy-notebooks"
-version = "0.1.8"
+version = "0.1.9"
 description = "🐶 Agentic AI-Empowered Data Science Notebooks - A revolutionary notebook environment combining Jupyter-style computing with autonomous AI assistance"
 readme = "README.md"
 license = {text = "MIT"}
