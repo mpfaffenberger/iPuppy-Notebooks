@@ -495,6 +495,22 @@ export const NotebookCell = ({
   // Store reference to CodeMirror view for tab handling
   const codeMirrorViewRef = React.useRef<any>(null);
   
+  // Store reference to output section for scrolling
+  const outputSectionRef = React.useRef<HTMLDivElement>(null);
+  
+  // Scroll to output section when execution starts
+  React.useEffect(() => {
+    if (isExecuting && cell.cell_type === 'code' && outputSectionRef.current) {
+      // Small delay to ensure the UI has updated
+      setTimeout(() => {
+        outputSectionRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }, 100);
+    }
+  }, [isExecuting, cell.cell_type]);
 
   // Intercept Tab before CodeMirror can preventDefault it
   React.useEffect(() => {
@@ -788,7 +804,10 @@ export const NotebookCell = ({
 
       {/* Cell output - only show for code cells */}
       {cell.cell_type === 'code' && (
-        <Box sx={{ backgroundColor: 'background.default', borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box 
+          ref={outputSectionRef}
+          sx={{ backgroundColor: 'background.default', borderTop: '1px solid', borderColor: 'divider' }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="caption" color="text.secondary">output:</Typography>
