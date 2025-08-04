@@ -96,6 +96,100 @@ const LaTeXRenderer = ({ latex, style }: { latex: string; style: React.CSSProper
   );
 };
 
+// Function to render markdown with LaTeX support
+const renderMarkdownWithLatex = (markdown: string): string => {
+  if (!markdown.trim()) {
+    return '<em style="color: #71717a;">Click to edit markdown...</em>';
+  }
+
+  // Debug: Check if we have the right characters
+  const hasDisplayMath = /\$\$/.test(markdown);
+  const hasInlineMath = /\$[^$\n]+\$/.test(markdown);
+  console.log('LaTeX detection:', { hasDisplayMath, hasInlineMath, firstTenChars: [...markdown.substring(0, 10)].map(c => c.charCodeAt(0)) });
+  
+  try {
+    // First, extract and replace LaTeX expressions with placeholders
+    const latexExpressions: string[] = [];
+    let processedMarkdown = markdown;
+
+    // Handle display math $$...$$  (use [\s\S] to match newlines)
+    processedMarkdown = processedMarkdown.replace(/\$\$([\s\S]+?)\$\$/g, (match, latex) => {
+      console.log('Found display math:', JSON.stringify(latex));
+      const index = latexExpressions.length;
+      latexExpressions.push(latex.trim());
+      return `LATEX_DISPLAY_${index}`;
+    });
+
+    // Handle inline math $...$
+    processedMarkdown = processedMarkdown.replace(/\$([^$\n]+?)\$/g, (match, latex) => {
+      console.log('Found inline math:', JSON.stringify(latex));
+      const index = latexExpressions.length;
+      latexExpressions.push(latex.trim());
+      return `LATEX_INLINE_${index}`;
+    });
+
+    console.log('After LaTeX extraction, expressions found:', latexExpressions.length);
+
+    // Render markdown - use .parse() for synchronous rendering
+    let html = marked.parse(processedMarkdown) as string;
+
+    // Replace LaTeX placeholders with rendered math
+    console.log('HTML before LaTeX replacement:', html);
+    console.log('Looking for placeholders in HTML:', {
+      hasDisplayPlaceholder: html.includes('LATEX_DISPLAY'),
+      hasInlinePlaceholder: html.includes('LATEX_INLINE'),
+      displayMatches: html.match(/LATEX_DISPLAY_\d+/g),
+      inlineMatches: html.match(/LATEX_INLINE_\d+/g)
+    });
+    
+    html = html.replace(/LATEX_DISPLAY_(\d+)/g, (match, indexStr: string) => {
+      console.log('Replacing display placeholder:', match, 'with index:', indexStr);
+      const index = parseInt(indexStr);
+      const latex = latexExpressions[index];
+      console.log('Display LaTeX to render:', JSON.stringify(latex));
+      try {
+        const renderedLatex = katex.renderToString(latex, {
+          throwOnError: false,
+          displayMode: true,
+          colorIsTextColor: true,
+          strict: false
+        });
+        console.log('Display LaTeX rendered successfully');
+        return `<div style="text-align: center; margin: 16px 0;">${renderedLatex}</div>`;
+      } catch (err) {
+        console.log('Display LaTeX render error:', err);
+        return `<span style="color: #ef4444; font-family: monospace;">LaTeX Error: ${err instanceof Error ? err.message : 'Unknown error'}</span>`;
+      }
+    });
+
+    html = html.replace(/LATEX_INLINE_(\d+)/g, (match, indexStr: string) => {
+      console.log('Replacing inline placeholder:', match, 'with index:', indexStr);
+      const index = parseInt(indexStr);
+      const latex = latexExpressions[index];
+      console.log('Inline LaTeX to render:', JSON.stringify(latex));
+      try {
+        const renderedLatex = katex.renderToString(latex, {
+          throwOnError: false,
+          displayMode: false,
+          colorIsTextColor: true,
+          strict: false
+        });
+        console.log('Inline LaTeX rendered successfully');
+        return renderedLatex;
+      } catch (err) {
+        console.log('Inline LaTeX render error:', err);
+        return `<span style="color: #ef4444; font-family: monospace;">LaTeX Error: ${err instanceof Error ? err.message : 'Unknown error'}</span>`;
+      }
+    });
+
+    console.log('Final HTML after LaTeX replacement:', html.substring(0, 200));
+
+    return html;
+  } catch (err) {
+    return `<span style="color: #ef4444;">Markdown Error: ${err instanceof Error ? err.message : 'Unknown error'}</span>`;
+  }
+};
+
 interface NotebookCellProps {
   cell: CellType;
   index: number;
@@ -675,9 +769,12 @@ export const NotebookCell = ({
             >
               <div 
                 dangerouslySetInnerHTML={{ 
-                  __html: cell.source.join('').trim() 
-                    ? marked(cell.source.join('')) 
-                    : '<em style="color: #71717a;">Click to edit markdown...</em>'
+                  __html: (() => {
+                    const rawSource = cell.source.join('');
+                    console.log('Raw cell source:', JSON.stringify(rawSource));
+                    console.log('First 10 char codes:', [...rawSource.substring(0, 10)].map(c => c.charCodeAt(0)));
+                    return renderMarkdownWithLatex(rawSource);
+                  })()
                 }}
                 style={{
                   color: '#d4d4d8',

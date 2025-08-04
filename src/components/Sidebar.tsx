@@ -2,6 +2,60 @@ import React from 'react';
 import { Box, Card, CardContent, Typography, Button, IconButton, TextField, InputAdornment } from '@mui/material';
 import { PlayArrow, Delete, Add, Send, ClearAll } from '@mui/icons-material';
 
+// Puppy thinking spinner component
+const PuppySpinner = () => {
+  const [position, setPosition] = React.useState(0);
+  
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setPosition(prev => (prev + 1) % 6);
+    }, 300);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const getPuppyPosition = () => {
+    const spaces = '     ';
+    const puppy = '🐶';
+    const leftParen = '(';
+    const rightParen = ')';
+    
+    // Create animation: puppy moves back and forth
+    const positions = [
+      `${leftParen}${puppy}${spaces}${rightParen}`,
+      `${leftParen} ${puppy}${spaces.slice(1)}${rightParen}`,
+      `${leftParen}  ${puppy}${spaces.slice(2)}${rightParen}`,
+      `${leftParen}${spaces.slice(2)}${puppy}  ${rightParen}`,
+      `${leftParen}${spaces.slice(1)}${puppy} ${rightParen}`,
+      `${leftParen}${spaces}${puppy}${rightParen}`,
+    ];
+    
+    return positions[position];
+  };
+  
+  return (
+    <Box
+      sx={{
+        alignSelf: 'flex-start',
+        backgroundColor: '#27272a',
+        color: '#d4d4d8',
+        p: 1.5,
+        borderRadius: '8px',
+        maxWidth: '85%',
+        fontSize: '0.875rem',
+        fontFamily: 'monospace'
+      }}
+    >
+      <Typography variant="body2" sx={{ fontFamily: 'monospace', textAlign: 'center' }}>
+        {getPuppyPosition()}
+      </Typography>
+      <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#71717a', textAlign: 'center', mt: 0.5 }}>
+        PUPPY IS THINKING...
+      </Typography>
+    </Box>
+  );
+};
+
 interface SidebarProps {
   notebooks: string[];
   newNotebookName: string;
@@ -168,6 +222,10 @@ export const Sidebar = ({
               </Typography>
             </Box>
           ))}
+          
+          {/* Show puppy spinner when agent is thinking */}
+          {agentLoading && <PuppySpinner />}
+          
           <div ref={messagesEndRef} />
         </Box>
         

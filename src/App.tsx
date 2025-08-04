@@ -285,6 +285,15 @@ function App() {
       
       if (data.status === 'running') {
         setExecutingCells(prev => new Set(prev).add(cellIndex));
+        // Clear previous outputs when execution starts
+        setNotebookContent(prev => {
+          const newContent = [...prev];
+          const cell = newContent[cellIndex];
+          if (cell) {
+            cell.outputs = [];
+          }
+          return newContent;
+        });
       } else if (data.status === 'completed' || data.status === 'error') {
         setExecutingCells(prev => {
           const newSet = new Set(prev);
