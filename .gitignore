@@ -31,6 +31,6 @@ Thumbs.db
 *.ipynb
 
 # iPuppy Notebooks runtime files
-kernels/
+/kernels/
 build/
 dist/
