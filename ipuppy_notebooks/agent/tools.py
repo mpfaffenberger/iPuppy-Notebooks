@@ -117,10 +117,10 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
         
         if not notebook_sid:
-            error_msg = "NOTEBOOK_SID not set"
-            logger.error(f"agent_execute_cell failed: {error_msg}")
+            error_msg = "Notebook connection not established. Please ensure a notebook is open and connected before executing cells."
+            logger.error(f"agent_execute_cell failed: NOTEBOOK_SID not set")
             await emit_agent_message(error_msg, "execute_cell", False)
-            return {"success": False, "error": error_msg}
+            return {"success": False, "error": error_msg, "needs_notebook": True}
         
         try:
             # First read the existing cell content
@@ -208,10 +208,10 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
         
         if not notebook_sid:
-            error_msg = "NOTEBOOK_SID not set"
-            logger.error(f"agent_read_cell_input failed: {error_msg}")
+            error_msg = "Notebook connection not established. Please ensure a notebook is open and connected before reading cell content."
+            logger.error(f"agent_read_cell_input failed: NOTEBOOK_SID not set")
             await emit_agent_message(error_msg, "read_cell_input", False)
-            return {"success": False, "error": error_msg}
+            return {"success": False, "error": error_msg, "needs_notebook": True}
         
         try:
             logger.debug(f"Calling read_cell_input({cell_index}, {repr(notebook_sid)})")
@@ -234,10 +234,10 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
         
         if not notebook_sid:
-            error_msg = "NOTEBOOK_SID not set"
-            logger.error(f"agent_read_cell_output failed: {error_msg}")
+            error_msg = "Notebook connection not established. Please ensure a notebook is open and connected before reading cell outputs."
+            logger.error(f"agent_read_cell_output failed: NOTEBOOK_SID not set")
             await emit_agent_message(error_msg, "read_cell_output", False)
-            return {"success": False, "error": error_msg}
+            return {"success": False, "error": error_msg, "needs_notebook": True}
         
         try:
             logger.debug(f"Calling read_cell_output({cell_index}, {repr(notebook_sid)})")
@@ -260,10 +260,10 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
         logger.debug(f"Retrieved notebook_sid: {repr(notebook_sid)}")
         
         if not notebook_sid:
-            error_msg = "NOTEBOOK_SID not set"
-            logger.error(f"agent_list_all_cells failed: {error_msg}")
+            error_msg = "Notebook connection not established. Please ensure a notebook is open and connected before listing cells."
+            logger.error(f"agent_list_all_cells failed: NOTEBOOK_SID not set")
             await emit_agent_message(error_msg, "list_all_cells", False)
-            return {"success": False, "error": error_msg}
+            return {"success": False, "error": error_msg, "needs_notebook": True}
         
         try:
             logger.debug(f"Calling list_all_cells({repr(notebook_sid)})")
