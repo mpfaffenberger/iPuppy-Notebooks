@@ -39,6 +39,15 @@ app = FastAPI(
 package_dir = Path(__file__).parent
 static_dir = package_dir / "compiled_ui"
 
+app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
+
+# Create directories if they don't exist
+os.makedirs("kernels", exist_ok=True)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Debug: Check if static files exist
 logger.info(f"Package directory: {package_dir}")
 logger.info(f"Static directory: {static_dir}")
@@ -48,15 +57,8 @@ if static_dir.exists():
     assets_dir = static_dir / "assets"
     if assets_dir.exists():
         logger.info(f"Assets directory contents: {list(assets_dir.iterdir())}")
-
-app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
-
-# Create directories if they don't exist
-os.makedirs("kernels", exist_ok=True)
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+else:
+    logger.warning("Static directory does not exist - Plotly and other rich outputs will not work!")
 
 agent = get_data_science_puppy_agent()
 
