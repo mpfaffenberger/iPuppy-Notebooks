@@ -51,6 +51,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ipuppy_notebooks"]
+include = ["ipuppy_notebooks/compiled_ui/**"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "README.md" = "README.md"
@@ -69,7 +70,9 @@ include = [
     "index.html",
     "README.md",
     "LICENSE",
-    "pyproject.toml"
+    "pyproject.toml",
+    "**/*.html",
+    "**/*.js"
 ]
 
 [tool.uv]
