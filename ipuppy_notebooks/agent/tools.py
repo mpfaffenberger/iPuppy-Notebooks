@@ -63,20 +63,26 @@ def register_data_science_tools(pydantic_agent, data_science_agent):
     @pydantic_agent.tool
     async def agent_add_new_cell(
         context: RunContext,
-        cell_index: int = 0,
         cell_type: str = "code",
         content: str = "",
     ) -> Dict[str, Any]:
-        """Add a new cell at the specified index."""
+        """Add a new cell at the end of the notebook."""
         logger.info(
-            f"agent_add_new_cell called with cell_index={cell_index}, cell_type={cell_type}, content_length={len(content)}"
+            f"agent_add_new_cell called with cell_type={cell_type}, content_length={len(content)}"
         )
         try:
+            # Get the current notebook sid
+            notebook_sid = data_science_agent.get_notebook_sid()
+            
+            # Get current cell count to determine append index
+            cells = await list_all_cells(notebook_sid)
+            append_index = len(cells) if cells else 0
+            
             logger.debug(
-                f"Calling add_new_cell({cell_index}, {cell_type}, {repr(content)})"
+                f"Calling add_new_cell({append_index}, {cell_type}, {repr(content)})"
             )
-            add_new_cell(cell_index, cell_type, content)
-            message = f"Added new {cell_type} cell at index {cell_index}"
+            add_new_cell(append_index, cell_type, content)
+            message = f"Added new {cell_type} cell at the end of notebook (index {append_index})"
             logger.info(f"Successfully added cell: {message}")
             await emit_agent_message(message, "add_new_cell", True)
             return {"success": True, "message": message}
