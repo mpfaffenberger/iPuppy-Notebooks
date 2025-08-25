@@ -140,11 +140,15 @@ try:
     import plotly.io as pio
     import plotly.offline as pyo
     
-    # Initialize notebook mode (connected=True since we have CDN loaded)
+    # Initialize notebook mode - connected=True since we have Plotly CDN loaded in HTML
     pyo.init_notebook_mode(connected=True)
     
-    # Use standard notebook renderer
-    pio.renderers.default = "notebook"
+    # Set renderer to notebook_connected since we have the CDN
+    pio.renderers.default = "notebook_connected"
+    
+    # Ensure plotly HTML outputs include the div container
+    pio.config.default_width = None
+    pio.config.default_height = None
     
 except ImportError:
     pass
