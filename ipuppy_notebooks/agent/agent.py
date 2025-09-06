@@ -21,15 +21,7 @@ logger = logging.getLogger(__name__)
 # Try to import ModelFactory, but fall back to direct model creation if not available
 try:
     from code_puppy.model_factory import ModelFactory
-
-    MODELS_JSON_PATH = os.environ.get("MODELS_JSON_PATH", None)
-    if MODELS_JSON_PATH is None:
-        # Try to find the models.json file relative to the module
-        import code_puppy.model_factory
-
-        MODELS_JSON_PATH = (
-            pathlib.Path(code_puppy.model_factory.__file__).parent / "models.json"
-        )
+    from code_puppy.config import MODELS_FILE
     USE_MODEL_FACTORY = True
 except ImportError:
     USE_MODEL_FACTORY = False
@@ -58,7 +50,7 @@ class DataSciencePuppyAgent:
 
         # Load model
         try:
-            self.config = ModelFactory.load_config(MODELS_JSON_PATH)
+            self.config = ModelFactory.load_config()
             # Get the first available model as default
             self.current_model_key = list(self.config.keys())[0]
             self.model = ModelFactory.get_model(self.current_model_key, self.config)
