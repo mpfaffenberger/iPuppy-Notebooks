@@ -210,46 +210,50 @@ const refinedTheme = createTheme({
   ],
 });
 
-const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput; cleanAnsiCodes: (text: string) => string }) => {
+const OutputRenderer = ({ output, cleanAnsiCodes, index }: { output: NotebookCellOutput; cleanAnsiCodes: (text: string) => string; index?: number }) => {
   // Handle string outputs directly
   if (typeof output === 'string') {
     return <div>{cleanAnsiCodes(output)}</div>;
   }
-
-  // Handle display_data with HTML content
-  if (output.output_type === 'display_data' && output.data && 'text/html' in output.data) {
-    // For HTML content, render using dangerouslySetInnerHTML
-    return (
-      <PlotlyHtmlRenderer 
-        html={output.data['text/html']}
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '0.875rem',
-          overflow: 'auto'
-        }}
-      />
-    );
-  }
-
-  // Handle execute_result with HTML content
-  if (output.output_type === 'execute_result' && output.data && 'text/html' in output.data) {
-    // For HTML content, render using dangerouslySetInnerHTML
-    return (
-      <PlotlyHtmlRenderer 
-        html={output.data['text/html']}
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '0.875rem',
-          overflow: 'auto'
-        }}
-      />
-    );
-  }
-
+  
+  // Type guard for outputs with data property
+  const hasDataOutput = (obj: any): obj is { output_type: 'display_data' | 'execute_result'; data: Record<string, any> } => 
+    obj && typeof obj === 'object' && 
+    (obj.output_type === 'display_data' || obj.output_type === 'execute_result') && 
+    obj.data;
 
   // Handle outputs with data property (display_data and execute_result)
-  if (output.output_type === 'display_data' || output.output_type === 'execute_result') {
+  if (hasDataOutput(output)) {
     const outputData = output.data;
+    
+    // Handle Plotly JSON content - should be prioritized over HTML
+    if (outputData && 'application/vnd.plotly.v1+json' in outputData) {
+      // Convert Plotly JSON to HTML
+      const plotlyJson = outputData['application/vnd.plotly.v1+json'];
+      const uniqueId = index !== undefined ? 
+        `plotly-${Math.random().toString(36).substr(2, 9)}-${index}` : 
+        `plotly-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+      
+      const plotlyHtml = `<div id="${uniqueId}"></div><script>
+        try {
+          Plotly.newPlot("${uniqueId}", ${JSON.stringify(plotlyJson)});
+        } catch (e) {
+          console.error("Plotly rendering error:", e);
+          document.getElementById("${uniqueId}").innerHTML = "Error rendering Plotly visualization: " + e;
+        }
+      </script>`;
+      
+      return (
+        <PlotlyHtmlRenderer 
+          html={plotlyHtml}
+          style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.875rem',
+            overflow: 'auto'
+          }}
+        />
+      );
+    }
     
     // Handle image outputs (PNG, JPEG, GIF)
     for (const mimeType of ['image/png', 'image/jpeg', 'image/gif']) {
@@ -311,7 +315,7 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
     }
 
     // Handle text/plain
-    if ('text/plain' in outputData) {
+    if (outputData && 'text/plain' in outputData) {
       return (
         <pre style={{ 
           fontFamily: '"JetBrains Mono", monospace',
@@ -322,6 +326,20 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
         }}>
           {cleanAnsiCodes(outputData['text/plain'])}
         </pre>
+      );
+    }
+
+    // Handle text/html (generic HTML content - not Plotly specific)
+    if ('text/html' in outputData) {
+      return (
+        <PlotlyHtmlRenderer 
+          html={outputData['text/html']}
+          style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.875rem',
+            overflow: 'auto'
+          }}
+        />
       );
     }
 
@@ -462,9 +480,22 @@ const OutputRenderer = ({ output, cleanAnsiCodes }: { output: NotebookCellOutput
     }
   }
 
-  // Handle other object outputs with text property
-  if (output && typeof output === 'object' && 'text' in output && (output as any).text) {
-    return <div>{cleanAnsiCodes((output as any).text)}</div>;
+  // Type guard for stream outputs
+  const hasStreamOutput = (obj: any): obj is { output_type: 'stream'; text: string } =>
+    obj && typeof obj === 'object' && obj.output_type === 'stream' && typeof obj.text === 'string';
+  
+  // Type guard for error outputs
+  const hasErrorOutput = (obj: any): obj is { output_type: 'error'; text: string } =>
+    obj && typeof obj === 'object' && obj.output_type === 'error' && typeof obj.text === 'string';
+
+  // Handle stream outputs
+  if (hasStreamOutput(output)) {
+    return <div>{cleanAnsiCodes(output.text)}</div>;
+  }
+
+  // Handle error outputs
+  if (hasErrorOutput(output)) {
+    return <div>{cleanAnsiCodes(output.text)}</div>;
   }
 
   // Fallback to JSON.stringify for other object types
@@ -850,10 +881,10 @@ export const NotebookCell = ({
             {cell.outputs?.length ? (
               Array.isArray(cell.outputs) ? (
                 cell.outputs.map((output, i) => (
-                  <OutputRenderer key={i} output={output} cleanAnsiCodes={cleanAnsiCodes} />
+                  <OutputRenderer key={i} index={index} output={output} cleanAnsiCodes={cleanAnsiCodes} />
                 ))
               ) : (
-                <OutputRenderer output={cell.outputs} cleanAnsiCodes={cleanAnsiCodes} />
+                <OutputRenderer index={index} output={cell.outputs} cleanAnsiCodes={cleanAnsiCodes} />
               )
             ) : isExecuting ? (
               <Typography color="text.secondary" fontStyle="italic">waiting for output...</Typography>

@@ -18,6 +18,17 @@ from ipuppy_notebooks.conversation_history import conversation_history
 
 logger = logging.getLogger(__name__)
 
+# Ensure ~/.code_puppy directory exists
+home_dir = pathlib.Path.home()
+code_puppy_dir = home_dir / ".code_puppy"
+if not code_puppy_dir.exists():
+    try:
+        code_puppy_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created directory: {code_puppy_dir}")
+    except Exception as e:
+        logger.error(f"Failed to create directory {code_puppy_dir}: {e}")
+        # We might not be able to proceed without this directory, but let's try
+
 # Try to import ModelFactory, but fall back to direct model creation if not available
 try:
     from code_puppy.model_factory import ModelFactory
