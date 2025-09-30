@@ -22,9 +22,6 @@ from ipuppy_notebooks import (
 logger = logging.getLogger(__name__)
 
 
-# Note: notebook_sid is now accessed via data_science_agent.get_notebook_sid()
-
-
 async def emit_agent_message(message: str, tool_name: str = None, success: bool = True):
     """Emit a message to the puppy scientist window in the frontend."""
     try:

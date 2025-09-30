@@ -47,16 +47,7 @@ class AgentResponse(pydantic.BaseModel):
     awaiting_user_input: bool = pydantic.Field(
         False, description="True if user input is needed to continue the task"
     )
-
-def disable_verification(client) -> None:
-    client._verify = False  # type: ignore
-    if hasattr(client, "_mount_manager"):
-        transports = client._mount_manager._transports  # type: ignore
-        for transport in transports.values():
-            if hasattr(transport, "_pool") and transport._pool is not None:  # type: ignore
-                pool = transport._pool  # type: ignore
-                if hasattr(pool, "ssl_context"):
-                    pool.ssl_context = client._ssl_config.load_ssl_context(False)  # type: ignore
+# type: ignore
 
 
 class DataSciencePuppyAgent:
@@ -74,7 +65,6 @@ class DataSciencePuppyAgent:
             # Get the first available model as default
             self.current_model_key = list(self.config.keys())[0]
             self.model = ModelFactory.get_model(self.current_model_key, self.config)
-            disable_verification(self.model.provider._client)
         except Exception as e:
             logger.warning(f"Failed to load model via ModelFactory: {e}")
             sys.exit(1)
