@@ -118,12 +118,13 @@ function App() {
     | { message: string; severity: 'success' | 'error' | 'warning' | 'info' }
     | null
   >(null);
+  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [executingCells, setExecutingCells] = useState<Set<number>>(new Set());
   const [editingMarkdownCells, setEditingMarkdownCells] = useState<Set<number>>(new Set());
   const [debugModalOpen, setDebugModalOpen] = useState<boolean>(false);
-  const [autoSaveEnabled] = useState<boolean>(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(true);
   const [agentMessages, setAgentMessages] = useState<Array<{role: 'user' | 'agent', message: string, timestamp: number}>>([
     { role: 'agent', message: 'Woof! I\'m your Puppy Scientist assistant. I can help you analyze data, write code, and answer questions about your notebooks!', timestamp: Date.now() }
   ]);
@@ -134,10 +135,12 @@ function App() {
   // Use ref to avoid stale closure issues
   const socketRef = useRef<Socket | null>(null);
   const notebookContentRef = useRef<NotebookCellType[]>([]);
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Update ref whenever notebookContent changes
+  // Update ref whenever notebookContent changes and schedule auto-save
   useEffect(() => {
     notebookContentRef.current = notebookContent;
+    scheduleAutoSave();
   }, [notebookContent]);
 
   // Effects
@@ -153,6 +156,10 @@ function App() {
         console.log('Cleaning up socket connection on unmount');
         socketRef.current.disconnect();
         socketRef.current = null;
+      }
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
       }
     };
   }, []); // Empty dependency - only run on mount/unmount
@@ -300,11 +307,8 @@ function App() {
           newSet.delete(cellIndex);
           return newSet;
         });
-        // Auto-save disabled for now to prevent server reload issues
-        // setAutoSaveEnabled(true);
-        // if (currentNotebook) {
-        //   setTimeout(() => saveNotebook(), 100);
-        // }
+        setAutoSaveEnabled(true);
+        // Don't schedule auto-save here as we're not making content changes
       }
       
       if (data.output) {
@@ -320,6 +324,8 @@ function App() {
           }
           return newContent;
         });
+        // Schedule auto-save after updating outputs
+        scheduleAutoSave();
       }
     }
   };
@@ -349,6 +355,7 @@ function App() {
     const { cell_index } = data;
     if (typeof cell_index === 'number') {
       setNotebookContent(prev => prev.filter((_, i) => i !== cell_index));
+      // Auto-save will be scheduled by the setNotebookContent effect
     }
   };
 
@@ -390,6 +397,7 @@ function App() {
         newContent.splice(new_index, 0, movedCell);
         return newContent;
       });
+      // Auto-save will be scheduled by the setNotebookContent effect
     }
   };
 
@@ -662,11 +670,17 @@ function App() {
     }
   };
 
-  const saveNotebook = async () => {
+  const saveNotebook = async (isAutoSave: boolean = false) => {
     if (!currentNotebook) return;
+    
+    // Set auto-saving status if this is an auto-save
+    if (isAutoSave) {
+      setIsAutoSaving(true);
+    }
+    
     try {
       const notebookData = {
-        cells: notebookContent,
+        cells: notebookContentRef.current,
         metadata: {},
         nbformat: 4,
         nbformat_minor: 5
@@ -677,20 +691,43 @@ function App() {
         body: JSON.stringify(notebookData),
       });
       if (!res.ok) throw new Error(`Failed to save notebook: ${res.status}`);
-      showAlert(`Saved ${currentNotebook}`, 'success');
+      
+      // Only show alert for manual saves, not auto-saves
+      if (!isAutoSave) {
+        showAlert(`Saved ${currentNotebook}`, 'success');
+      }
     } catch (error) {
       console.error(error);
       showAlert('Failed to save notebook', 'error');
+    } finally {
+      // Reset auto-saving status after a delay to allow the flash animation to complete
+      if (isAutoSave) {
+        setTimeout(() => {
+          setIsAutoSaving(false);
+        }, 1000);
+      }
     }
+  };
+
+  const scheduleAutoSave = () => {
+    if (!autoSaveEnabled || !currentNotebook) {
+      return;
+    }
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveTimeoutRef.current = null;
+      void saveNotebook(true);
+    }, 200);
   };
 
   // Cell functions
   const addCell = () => {
     setNotebookContent((prev) => [...prev, { cell_type: 'code', source: [''], outputs: [] }]);
-    // Auto-save disabled - manual save only
-    // if (currentNotebook && autoSaveEnabled) {
-    //   setTimeout(() => saveNotebook(), 100);
-    // }
+    // Auto-save will be scheduled by the setNotebookContent effect
   };
 
   const updateCell = (index: number, patch: Partial<NotebookCellType>) => {
@@ -699,10 +736,7 @@ function App() {
       next[index] = { ...next[index], ...patch };
       return next;
     });
-    // Auto-save disabled - manual save only
-    // if (currentNotebook && autoSaveEnabled) {
-    //   setTimeout(() => saveNotebook(), 100);
-    // }
+    scheduleAutoSave();
   };
 
   const executeCell = async (index: number) => {
@@ -742,7 +776,7 @@ function App() {
     }
     
     try {
-      // setAutoSaveEnabled(false);
+      setAutoSaveEnabled(false);
       updateCell(index, { outputs: [] });
       setExecutingCells(prev => new Set(prev).add(index));
       
@@ -761,7 +795,7 @@ function App() {
         newSet.delete(index);
         return newSet;
       });
-      // setAutoSaveEnabled(true);
+      setAutoSaveEnabled(true);
     }
   };
 
@@ -942,10 +976,7 @@ function App() {
   
   const handleDeleteCell = (index: number) => {
     setNotebookContent(prev => prev.filter((_, i) => i !== index));
-    // Auto-save disabled - manual save only
-    // if (currentNotebook && autoSaveEnabled) {
-    //   setTimeout(() => saveNotebook(), 100);
-    // }
+    // Auto-save will be scheduled by the setNotebookContent effect
   };
   
   const handleToggleMarkdownEdit = (index: number) => {
@@ -955,9 +986,7 @@ function App() {
         newSet.delete(index);
         return newSet;
       });
-      if (currentNotebook && autoSaveEnabled) {
-        setTimeout(() => saveNotebook(), 100);
-      }
+      // Auto-save will be scheduled by the setNotebookContent effect
     } else {
       setEditingMarkdownCells(prev => new Set(prev).add(index));
     }
@@ -970,10 +999,7 @@ function App() {
         [newContent[index - 1], newContent[index]] = [newContent[index], newContent[index - 1]];
         return newContent;
       });
-      // Auto-save disabled - manual save only
-      // if (currentNotebook && autoSaveEnabled) {
-      //   setTimeout(() => saveNotebook(), 100);
-      // }
+      // Auto-save will be scheduled by the setNotebookContent effect
     }
   };
 
@@ -984,10 +1010,7 @@ function App() {
         [newContent[index], newContent[index + 1]] = [newContent[index + 1], newContent[index]];
         return newContent;
       });
-      // Auto-save disabled - manual save only
-      // if (currentNotebook && autoSaveEnabled) {
-      //   setTimeout(() => saveNotebook(), 100);
-      // }
+      // Auto-save will be scheduled by the setNotebookContent effect
     }
   };
 
@@ -1065,6 +1088,7 @@ function App() {
         availableModels={availableModels}
         currentModel={currentModel}
         onModelChange={handleModelChange}
+        isAutoSaving={isAutoSaving}
       />
 
       <Container 

@@ -13,6 +13,7 @@ interface HeaderProps {
   availableModels: {[key: string]: string};
   currentModel: string;
   onModelChange: (modelKey: string) => void;
+  isAutoSaving?: boolean;
 }
 
 export const Header = ({
@@ -26,7 +27,8 @@ export const Header = ({
   onEnsureKernel,
   availableModels,
   currentModel,
-  onModelChange
+  onModelChange,
+  isAutoSaving = false
 }: HeaderProps) => {
   return (
     <AppBar 
@@ -183,6 +185,25 @@ export const Header = ({
                   borderColor: '#52525b',
                   backgroundColor: '#27272a',
                   color: '#d4d4d8'
+                },
+                // Animation for auto-saving flash
+                animation: isAutoSaving ? 'saveButtonFlash 1s ease-in-out' : 'none',
+                '@keyframes saveButtonFlash': {
+                  '0%': {
+                    borderColor: '#3f3f46',
+                    backgroundColor: '#27272a',
+                    color: '#a1a1aa',
+                  },
+                  '50%': {
+                    borderColor: '#4ade80',  // green-500
+                    backgroundColor: '#4ade8020',  // green with opacity
+                    color: '#4ade80',  // green-500
+                  },
+                  '100%': {
+                    borderColor: '#3f3f46',
+                    backgroundColor: '#27272a',
+                    color: '#a1a1aa',
+                  },
                 }
               }}
             >
